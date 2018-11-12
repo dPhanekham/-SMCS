@@ -5,6 +5,7 @@ import array
 import sys
 
 from typing import List, Set, Dict, Tuple, Optional
+from cryptography.fernet import Fernet
 
 
 MIN_PYTHON = (3, 6)
@@ -19,6 +20,8 @@ if sys.version_info < MIN_PYTHON:
 
 def main():
   #f = open('test1', 'r')
+
+  key = Fernet.generate_key()
 
   with open('test1.txt', 'rb') as f:
 
@@ -72,10 +75,19 @@ def stitchFragments(b: List[bytearray], parity: bytearray) -> bytearray:
   pass
 
 
-def encryptByteArray(b: bytearray) -> bytearray:
-  pass
+def encryptByteArray(plain_text: bytes, key: bytes) -> bytes:
+  cipher_suite = Fernet(key)
+  cipher_text = cipher_suite.encrypt(plain_text)
+  return cipher_text
 
-#TODO maybe do this when the fragments are created
+
+def decryptByteArray(cipher_text: bytes, key: bytes) -> bytes:
+  cipher_suite = Fernet(key)
+  plain_text = cipher_suite.decrypt(cipher_text)
+  return plain_text
+  
+
+# TODO maybe do this when the fragments are created
 def addHeadersToFragments(fragments: List[bytearray]):
   """Add headers to fragments.
   
@@ -92,6 +104,7 @@ def addHeadersToFragments(fragments: List[bytearray]):
     fragments: List of bytearrays
   """
   pass
+
 
 def calculateMissingFragment(fragments: List[bytearray], parity: bytearray) -> bytearray:
   """Calculate a missing fragment
@@ -114,7 +127,7 @@ def calculateMissingFragment(fragments: List[bytearray], parity: bytearray) -> b
   result = bytearray()
   for i in range(len(outputArrays[0])):
     result.append(outputArrays[0][i])
-    if i <  len(b2_recreated):
+    if i < len(b2_recreated):
       result.append(b2_recreated[i])
 
   print(len(result))
@@ -126,6 +139,7 @@ def calculateMissingFragment(fragments: List[bytearray], parity: bytearray) -> b
 
 def calculateMissingFragment(arrays: List[bytearray]) -> bytearray:
   pass
+
 
 def splitIntoFragments(b: bytearray, num_fragments: int, create_parity=True) -> List[bytearray]:
   """[summary]
