@@ -6,9 +6,9 @@ import sys
 
 from typing import List, Set, Dict, Tuple, Optional
 
-# MIN_PYTHON = (3, 6)
-# if sys.version_info < MIN_PYTHON:
-#   sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
+MIN_PYTHON = (3, 6)
+if sys.version_info < MIN_PYTHON:
+  sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
 
 
 #TODO
