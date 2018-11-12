@@ -22,11 +22,11 @@ def main():
 
   with open('test1.txt', 'rb') as f:
 
-    b = bytearray(f.read())  
+    b = readBytesFromFile(f)
     print(b)
     print(len(b))
 
-    fragments, parity = splitIntoFragments(b, 2)
+    fragments, parity = splitIntoFragments(b, 3)
 
     for frag in fragments:
       print(frag)
@@ -62,8 +62,15 @@ def main():
     # with open('result.jpg', 'w') as f2:
     #   f2.write(result.decode('utf8'))
 
+
+def readBytesFromFile(file) -> bytearray:
+  b = bytearray(file.read())
+  return b
+
+
 def stitchFragments(b: List[bytearray], parity: bytearray) -> bytearray:
   pass
+
 
 def encryptByteArray(b: bytearray) -> bytearray:
   pass
@@ -73,9 +80,13 @@ def addHeadersToFragments(fragments: List[bytearray]):
   """Add headers to fragments.
   
   Add headers to all fragments.
+  Current header is 4 bytes
   currently header includes
-    -position
     -total fragments
+    -position
+    -total_file_length % num_fragments
+    -placeholder
+
   
   Args:
     fragments: List of bytearrays
@@ -116,22 +127,24 @@ def calculateMissingFragment(fragments: List[bytearray], parity: bytearray) -> b
 def calculateMissingFragment(arrays: List[bytearray]) -> bytearray:
   pass
 
-def splitIntoFragments(b: bytearray, num_splits: int, create_parity=True) -> List[bytearray]:
+def splitIntoFragments(b: bytearray, num_fragments: int, create_parity=True) -> List[bytearray]:
   """[summary]
   
   [description]
   
   Arguments:
     b {bytearray} -- [description]
-    num_splits {int} -- [description]
+    num_fragments {int} -- [description]
   
   Keyword Arguments:
     create_parity {bool} -- [description] (default: {True})
   """
+  print("length of b:", len(b))
+  print("b mod num_fragments:", (len(b) % num_fragments))
   outputFragments = []
   parity = bytearray()
 
-  for i in range(num_splits):
+  for i in range(num_fragments):
     outputFragments.append(bytearray())
 
   i = 0
