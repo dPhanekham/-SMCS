@@ -85,7 +85,7 @@ def decryptByteArray(cipher_text: bytes, key: bytes) -> bytes:
   cipher_suite = Fernet(key)
   plain_text = cipher_suite.decrypt(cipher_text)
   return plain_text
-  
+
 
 # TODO maybe do this when the fragments are created
 def addHeadersToFragments(fragments: List[bytearray]):
@@ -103,6 +103,10 @@ def addHeadersToFragments(fragments: List[bytearray]):
   Args:
     fragments: List of bytearrays
   """
+  pass
+
+
+def orderFragmentsByHeader(fragments: List[bytearray]):
   pass
 
 
