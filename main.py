@@ -50,16 +50,18 @@ def main():
   with open('test1.txt', 'rb') as f:
 
     plain_text = readBytesFromFile(f)
-    cipher_text = encryptByteArray(plain_text, key, salt)
-
-    fragments, parity = splitIntoFragments(cipher_text, 3)
+    #cipher_text = encryptByteArray(plain_text, key, salt)
+    cipher_text = plain_text
+    fragments, parity = splitIntoFragments(cipher_text, 3, distributed_parity=True)
 
     for frag in fragments:
       print(frag)
     print(parity)
 
-    plain_text_bytearray = stitchFragments(fragments, parity)
+    plain_text_bytearray = stitchFragments(fragments)
 
+
+    print(plain_text_bytearray)
     #recreateMissingArray(parts, parity)
 
     # p = bytearray()
@@ -100,7 +102,38 @@ def stitchFragments(b: List[bytearray], parity: bytearray) -> bytearray:
   pass
 
 def stitchFragments(b: List[bytearray]) -> bytearray:
-  pass
+  
+  stitched_bytearray = bytearray()
+  total_length = 0
+  num_fragments = len(b)
+
+  for fragment in b:
+    del fragment[0:4]
+    total_length += len(fragment)
+
+  for fragment in b:
+    print(fragment)
+
+  i = 0
+  parity_counter = 0
+  #frag_position = 0
+  frag_counter = 0
+  #parity = bytearray(num_fragments)
+  parity_bit_position = num_fragments - 1
+
+  while i < total_length:
+    #insert parity bit
+    for fragment in b:
+      if parity_counter == num_fragments - 1:
+        parity_counter = 0
+        frag_counter += 1
+      if frag_counter < len(fragment):
+        stitched_bytearray.append(fragment[frag_counter])
+      parity_counter += 1
+    i += 1
+
+  return stitched_bytearray
+
 
 def generateSalt(length = 16) -> bytes:
   salt = os.urandom(16)
@@ -236,33 +269,49 @@ def splitIntoFragments(b: bytearray, num_fragments: int, distributed_parity=Fals
                         total_file_length_bytes,
                         distributed_parity) 
 
-  # if distributed_parity:
-  #   i = 0
-  #   while i < len(b):
-  #     x = 0
-  #     parity_bit_position = num_fragments - 1
-  #     parity = bytearray(num_fragments)
-  #     while x < num_fragments:
-  #       parity
+  if distributed_parity:
+    i = 0
+    parity_counter = 0
+    frag_position = 0
+    #parity = bytearray(num_fragments)
+    parity_bit_position = num_fragments - 1
 
-  # else:
-  #   pass
-  i = 0
-  while i < len(b):
-    arrayNum = 0
-    for frag in outputFragments:
-      if arrayNum == 0:
-        parity.append(0)
-        arrayNum = arrayNum + 1
-      if i < len(b):
-        frag.append(b[i])
-        parity[len(parity)-1] = parity[len(parity)-1] ^ b[i]
-        i = i + 1
+    while i < len(b):
+
+      #insert parity bit
+      if parity_counter == num_fragments - 1:
+        parity = 0
+        for byte in b[i - (num_fragments - 1):i]:
+          parity = parity ^ byte
+        outputFragments[frag_position].append(parity)
+        parity_counter = 0
+
+      outputFragments[frag_position].append(b[i])
+      frag_position += 1
+      parity_counter += 1
+
+      if frag_position >= num_fragments:
+        frag_position = 0
+
+      i += 1
+
+
+  else:
+    i = 0
+    while i < len(b):
+      arrayNum = 0
+      for frag in outputFragments:
+        if arrayNum == 0:
+          parity.append(0)
+          arrayNum = arrayNum + 1
+        if i < len(b):
+          frag.append(b[i])
+          parity[len(parity)-1] = parity[len(parity)-1] ^ b[i]
+          i += 1
 
   for output in outputFragments:
     print(len(output))
 
-  print(len(parity))
 
   #create parity string
   # for i in range(len(b1)):
