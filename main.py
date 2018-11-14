@@ -17,10 +17,14 @@ MIN_PYTHON = (3, 6)
 if sys.version_info < MIN_PYTHON:
   sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
 
+HEADER_LENGTH = 4
+
 #TODO
 # Add check for number of fragments
 #   should be less <= 65536
 #   should be less than bytes in file
+# Add check for missing fragments
+
 
 # ORDER OF OPERATIONS
 # get password from user
@@ -43,54 +47,34 @@ def main():
   salt = generateSalt()
   key = generateKey(password, salt)
   print(key)
+  print(salt)
 
 
   #key = Fernet.generate_key()
 
-  with open('test1.txt', 'rb') as f:
+  with open('rabbit.svg', 'rb') as f:
 
     plain_text = readBytesFromFile(f)
-    #cipher_text = encryptByteArray(plain_text, key, salt)
-    cipher_text = plain_text
-    fragments, parity = splitIntoFragments(cipher_text, 3, distributed_parity=True)
+    cipher_text = encryptByteArray(plain_text, key, salt)
+    print(cipher_text)
+    #cipher_text = plain_text
+    fragments, parity = splitIntoFragments(cipher_text, 6, distributed_parity=True)
 
     for frag in fragments:
       print(frag)
     print(parity)
 
-    plain_text_bytearray = stitchFragments(fragments)
+    cipher_text_bytearray = stitchFragments(fragments)
+    print(cipher_text_bytearray)
 
+    salt1 = getAndRemoveSaltFromFile(cipher_text_bytearray)
+    print(cipher_text_bytearray)
+    key1 = generateKey(password, salt1)
+    plain_text_bytearray = decryptByteArray(cipher_text_bytearray, key1)
 
     print(plain_text_bytearray)
-    #recreateMissingArray(parts, parity)
-
-    # p = bytearray()
-    # #create parity string
-    # for i in range(len(b1)):
-    #   if i < len(b2):
-    #     p.append(b1[i] ^ b2[i])
-    # print("P " + str(len(p)))
-    # print(p)
-    
-
-    # b2_recreated = bytearray()
-    # for i in range(len(b1)):
-    #   if i < len(p):
-    #     b2_recreated.append(b1[i] ^ p[i])
-
-    # print("b2_rec " + str(len(b2_recreated)))
-    # print(b2_recreated)
-
-    # result = bytearray()
-    # for i in range(len(b1)):
-    #   result.append(b1[i])
-    #   if i <  len(b2_recreated):
-    #     result.append(b2_recreated[i])
-
-    # print(len(result))
-    # print(b2_recreated[len(b2_recreated)-1])
-    # with open('result.jpg', 'w') as f2:
-    #   f2.write(result.decode('utf8'))
+    with open('result.svg', 'wb') as f2:
+      f2.write(plain_text_bytearray)
 
 
 def readBytesFromFile(file) -> bytearray:
@@ -108,7 +92,7 @@ def stitchFragments(b: List[bytearray]) -> bytearray:
   num_fragments = len(b)
 
   for fragment in b:
-    del fragment[0:4]
+    del fragment[0:HEADER_LENGTH]
     total_length += len(fragment)
 
   for fragment in b:
@@ -160,7 +144,7 @@ def concatSaltWithFile(cipher_text: bytearray, salt: bytes):
 
 def getAndRemoveSaltFromFile(cipher_text: bytearray) -> bytes:
   salt = bytes(cipher_text[len(cipher_text) - 16:])
-  cipher_text = cipher_text[0:len(cipher_text) - 16]
+  del cipher_text[len(cipher_text) - 16:]
   return salt
 
 
@@ -169,12 +153,14 @@ def encryptByteArray(plain_text: bytearray, key: bytes, salt: bytes) -> bytearra
   cipher_text = cipher_suite.encrypt(bytes(plain_text))
   cipher_array = bytearray(cipher_text)
   concatSaltWithFile(cipher_array, salt)
+  print(cipher_array)
   return cipher_array
 
 
 def decryptByteArray(cipher_text: bytearray, key: bytes) -> bytearray:
+  #TODO maye don't have to remove salt here?
   cipher_suite = Fernet(key)
-  plain_text = cipher_suite.decrypt(cipher_text)
+  plain_text = cipher_suite.decrypt(bytes(cipher_text))
   return plain_text
 
 
