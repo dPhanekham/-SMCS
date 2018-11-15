@@ -196,9 +196,9 @@ def addHeadersToFragments(fragments: List[bytearray], num_fragments: int,
 
 def orderFragmentsByHeader(fragments: List[bytearray]):
   pass
+  
 
-
-def calculateMissingFragment(fragments: List[bytearray], parity: bytearray) -> bytearray:
+def calculateMissingFragment(arrays: List[bytearray]) -> bytearray:
   """Calculate a missing fragment
   
   If 1 fragment is missing from the file, this method can caculate
@@ -228,9 +228,6 @@ def calculateMissingFragment(fragments: List[bytearray], parity: bytearray) -> b
   # with open('result.jpg', 'w') as f2:
   #   f2.write(result.decode('utf8'))
 
-
-def calculateMissingFragment(arrays: List[bytearray]) -> bytearray:
-  pass
 
 
 def splitIntoFragments(b: bytearray, num_fragments: int, distributed_parity=False) -> List[bytearray]:
