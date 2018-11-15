@@ -12,6 +12,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+import cloud_storage
+
 
 MIN_PYTHON = (3, 6)
 if sys.version_info < MIN_PYTHON:
@@ -48,6 +50,8 @@ def main():
   key = generateKey(password, salt)
   print(key)
   print(salt)
+
+  c = cloud_storage.CloudStorage()
 
 
   #key = Fernet.generate_key()
