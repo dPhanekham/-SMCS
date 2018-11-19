@@ -72,24 +72,24 @@ class GCPCloudStorage(CloudStorage):
   def isJson(myjson):
     try:
       json_object = json.loads(myjson)
-    except ValueError, e:
+    except ValueError:
       return False
     return True
 
 
 
 
-FILE_PATH = 'rabbit.svg'
+# FILE_PATH = 'rabbit.svg'
 
 # cls = get_driver(Provider.GOOGLE_STORAGE)
 # driver = GoogleStorageDriver(key=client_email, secret=private_key, ...)
 
 # container = driver.get_container(container_name='SMCS')
 
-extra = {'meta_data': {'owner': 'myuser', 'created': '2018-11-14'}}
+# extra = {'meta_data': {'owner': 'myuser', 'created': '2018-11-14'}}
 
-with open(FILE_PATH, 'rb') as iterator:
-    obj = driver.upload_object_via_stream(iterator=iterator,
-                                          container=container,
-                                          object_name='rabbit.svg',
-                                          extra=extra)
+# with open(FILE_PATH, 'rb') as iterator:
+#     obj = driver.upload_object_via_stream(iterator=iterator,
+#                                           container=container,
+#                                           object_name='rabbit.svg',
+#                                           extra=extra)

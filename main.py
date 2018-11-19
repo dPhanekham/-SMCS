@@ -5,21 +5,34 @@ import array
 import sys
 import base64
 import os
+import json
 
 from typing import List, Set, Dict, Tuple, Optional
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from libcloud.storage.types import Provider
+from libcloud.storage import providers
 
 import cloud_storage
-
+import gcp_storage
 
 MIN_PYTHON = (3, 6)
 if sys.version_info < MIN_PYTHON:
   sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
 
 HEADER_LENGTH = 4
+
+# GOOGLE_STORAGE = 'gcp'
+# DUMMY = 'dummy'
+
+# DRIVERS = {
+#     DUMMY:
+#     ('cloud_storage', 'CloudStorage'),
+#     GOOGLE_STORAGE:
+#     ('gcp_storage', 'GCPCloudStorage')
+#     }
 
 #TODO
 # Add check for number of fragments
@@ -79,6 +92,8 @@ def main():
     print(plain_text_bytearray)
     with open('result.svg', 'wb') as f2:
       f2.write(plain_text_bytearray)
+
+  readConfig("config.json")
 
 
 def readBytesFromFile(file) -> bytearray:
@@ -196,7 +211,7 @@ def addHeadersToFragments(fragments: List[bytearray], num_fragments: int,
 
 def orderFragmentsByHeader(fragments: List[bytearray]):
   pass
-  
+
 
 def calculateMissingFragment(arrays: List[bytearray]) -> bytearray:
   """Calculate a missing fragment
@@ -227,8 +242,6 @@ def calculateMissingFragment(arrays: List[bytearray]) -> bytearray:
   # print(b2_recreated[len(b2_recreated)-1])
   # with open('result.jpg', 'w') as f2:
   #   f2.write(result.decode('utf8'))
-
-
 
 def splitIntoFragments(b: bytearray, num_fragments: int, distributed_parity=False) -> List[bytearray]:
   """[summary]
@@ -310,7 +323,50 @@ def splitIntoFragments(b: bytearray, num_fragments: int, distributed_parity=Fals
   return outputFragments, parity
   
 
+def readConfig(config_file: str):
+  config = None
+  with open(config_file, 'r') as f:
+    config = f.read()
+  #config_dict = None
+  try:
+    config = json.loads(config)
+  except ValueError as e:
+    print("Config File needs to be properly formatted JSON")
+    print("Error:", e)
+  print(config)
+  for cloud in config['clouds']:
+    if cloud['cloud'].lower() in providers.DRIVERS:
+      print("something")
+    else:
+      print("ERROR: cloud provider", cloud['cloud'].lower(), "not found")
+
+  return config
+
+def getCloudsFromConfig(config_file: str):
+  config = readConfig(config_file)
+
+  cloud_storage_providers = []
+
+  for cloud in config['clouds']:
+    if cloud['cloud'].lower() in providers.DRIVERS:
+      c = CloudStorage()
+      cloud_storage_providers.append(c)
+    else:
+      print("ERROR: cloud provider", cloud['cloud'].lower(), "not found")
+
+
+def pushFragmentsToCloud(fragments: List[bytearray]):
   
+
+def getFragmentsFromCloud(file_name: str):
+  pass
+
+
+
+
+
+
+
 
 if __name__ == "__main__":
   main()
