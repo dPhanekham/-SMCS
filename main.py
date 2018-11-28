@@ -114,14 +114,13 @@ def main():
 
   csps = getCloudsFromConfig("config.json")
 
+  pushFragmentsToCloud(fragments, csps)
+
 
 def readBytesFromFile(file) -> bytearray:
   b = bytearray(file.read())
   return b
-
-
-def stitchFragments(b: List[bytearray], parity: bytearray) -> bytearray:
-  pass
+  
 
 def stitchFragments(b: List[bytearray]) -> bytearray:
   
@@ -381,7 +380,7 @@ def getCloudsFromConfig(config_file: str) -> List[cloud_storage.CloudStorage]:
 
   print(cloud_storage_providers)
 
-def pushFragmentsToCloud(fragments: List[bytearray]):
+def pushFragmentsToCloud(fragments: List[bytearray], List[cloud_storage.CloudStorage]):
   pass
 
 def getFragmentsFromCloud(file_name: str):
