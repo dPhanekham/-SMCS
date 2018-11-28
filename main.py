@@ -64,7 +64,7 @@ def main():
   print(key)
   print(salt)
 
-  c = cloud_storage.CloudStorage()
+  #c = cloud_storage.CloudStorage()
 
 
   #key = Fernet.generate_key()
@@ -93,7 +93,9 @@ def main():
     with open('result.svg', 'wb') as f2:
       f2.write(plain_text_bytearray)
 
-  readConfig("config.json")
+  #readConfig("config.json")
+
+  csps = getCloudsFromConfig("config.json")
 
 
 def readBytesFromFile(file) -> bytearray:
@@ -336,27 +338,34 @@ def readConfig(config_file: str):
   print(config)
   for cloud in config['clouds']:
     if cloud['cloud'].lower() in providers.DRIVERS:
+      cloud['cloud'] = cloud['cloud'].lower()
       print("something")
     else:
       print("ERROR: cloud provider", cloud['cloud'].lower(), "not found")
 
   return config
 
-def getCloudsFromConfig(config_file: str):
+def getCloudsFromConfig(config_file: str) -> List[cloud_storage.CloudStorage]:
   config = readConfig(config_file)
 
   cloud_storage_providers = []
 
   for cloud in config['clouds']:
     if cloud['cloud'].lower() in providers.DRIVERS:
-      c = CloudStorage()
+      c = cloud_storage.CloudStorage(cloud['cloud'], cloud['key'], cloud['secret'])
+      try:
+        c.driver.list_containers()
+      except:
+        print("ERROR: Failed to connect to cloud:", cloud['cloud'])
+        continue
       cloud_storage_providers.append(c)
     else:
       print("ERROR: cloud provider", cloud['cloud'].lower(), "not found")
 
+  print(cloud_storage_providers)
 
 def pushFragmentsToCloud(fragments: List[bytearray]):
-  
+  pass
 
 def getFragmentsFromCloud(file_name: str):
   pass

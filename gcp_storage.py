@@ -36,11 +36,13 @@ class GCPCloudStorage(CloudStorage):
     setMetaData(owner, date_str)
     pass
 
-  def setMetaData(self, owner, date_str):
+  def setMetaData(self, owner, date_str, object_name):
     if owner:
       metaData['meta_data']['owner'] = owner
     if date_str:
       metaData['meta_data']['created'] = date_str
+
+    metaData['meta_data'][''] = object_name
 
   def createContainer(self, container_name):
     self.driver.create_container(container_name)
