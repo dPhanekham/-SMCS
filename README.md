@@ -8,7 +8,7 @@ Secure Multi Cloud Storage
 	-Functions should include docstring
 
 
-	'sudo pip install apache-libcloud'
+	-You need to do'sudo pip install apache-libcloud'
 
 #TODO
 
