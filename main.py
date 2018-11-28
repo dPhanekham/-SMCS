@@ -286,7 +286,7 @@ def splitIntoFragments(b: bytearray, num_fragments: int) -> List[bytearray]:
   addHeadersToFragments(outputFragments, 
                         num_fragments, 
                         total_file_length_bytes,
-                        distributed_parity) 
+                        True) 
 
   #if distributed_parity:
   i = 0
@@ -328,8 +328,8 @@ def splitIntoFragments(b: bytearray, num_fragments: int) -> List[bytearray]:
   #         parity[len(parity)-1] = parity[len(parity)-1] ^ b[i]
   #         i += 1
 
-  for output in outputFragments:
-    print(len(output))
+  # for output in outputFragments:
+  #   print(len(output))
 
 
   #create parity string
