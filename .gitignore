@@ -1,3 +1,4 @@
 SMCS.sublime-workspace
 SMCS.sublime-project
 result.*
+__pycache__/*
