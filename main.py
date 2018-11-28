@@ -58,42 +58,61 @@ HEADER_LENGTH = 4
 
 def main():
   #f = open('test1', 'r')
+
+  #here user will input password
   password = "password"
+  #random salt is generated (later appended to cipher text)
   salt = generateSalt()
+  #generate key from salt and password
   key = generateKey(password, salt)
   print(key)
   print(salt)
 
-  c = cloud_storage.CloudStorage()
-
-
   #key = Fernet.generate_key()
 
-  with open('rabbit.svg', 'rb') as f:
-
+  #read bytes from files
+  plain_text = None
+  with open('test1.txt', 'rb') as f:
     plain_text = readBytesFromFile(f)
-    cipher_text = encryptByteArray(plain_text, key, salt)
-    print(cipher_text)
-    #cipher_text = plain_text
-    fragments, parity = splitIntoFragments(cipher_text, 6, distributed_parity=True)
 
-    for frag in fragments:
-      print(frag)
-    print(parity)
+  #encrypt plain text to cypher text
+  cipher_text = encryptByteArray(plain_text, key, salt)
+  print(cipher_text)
+  #cipher_text = plain_text
 
-    cipher_text_bytearray = stitchFragments(fragments)
-    print(cipher_text_bytearray)
+  #split into fragments
+  fragments = splitIntoFragments(cipher_text, 6)
 
-    salt1 = getAndRemoveSaltFromFile(cipher_text_bytearray)
-    print(cipher_text_bytearray)
-    key1 = generateKey(password, salt1)
-    plain_text_bytearray = decryptByteArray(cipher_text_bytearray, key1)
+  for frag in fragments:
+    print(frag)
 
-    print(plain_text_bytearray)
-    with open('result.svg', 'wb') as f2:
-      f2.write(plain_text_bytearray)
+  #store to cloud here
 
-  readConfig("config.json")
+  #retrieve from cloud here
+
+  #order fragments the right way
+
+  #stitch fragments back together
+  cipher_text_bytearray = stitchFragments(fragments)
+  print(cipher_text_bytearray)
+
+  #get salt from file
+  salt1 = getAndRemoveSaltFromFile(cipher_text_bytearray)
+  print(cipher_text_bytearray)
+
+  #generate key from salt (retrieved from cipher_text) and password
+  key1 = generateKey(password, salt1)
+
+  #decrypt ciphertext with key
+  plain_text_bytearray = decryptByteArray(cipher_text_bytearray, key1)
+
+  print(plain_text_bytearray)
+  with open('test1.output', 'wb') as f2:
+    f2.write(plain_text_bytearray)
+
+  #readConfig("config.json")
+
+  csps = getCloudsFromConfig("config.json")
 
 
 def readBytesFromFile(file) -> bytearray:
@@ -243,7 +262,7 @@ def calculateMissingFragment(arrays: List[bytearray]) -> bytearray:
   # with open('result.jpg', 'w') as f2:
   #   f2.write(result.decode('utf8'))
 
-def splitIntoFragments(b: bytearray, num_fragments: int, distributed_parity=False) -> List[bytearray]:
+def splitIntoFragments(b: bytearray, num_fragments: int) -> List[bytearray]:
   """[summary]
   
   [description]
@@ -263,54 +282,54 @@ def splitIntoFragments(b: bytearray, num_fragments: int, distributed_parity=Fals
 
   for i in range(num_fragments):
     outputFragments.append(bytearray())
-  #TODO add header to fragments here
+
   addHeadersToFragments(outputFragments, 
                         num_fragments, 
                         total_file_length_bytes,
-                        distributed_parity) 
+                        True) 
 
-  if distributed_parity:
-    i = 0
-    parity_counter = 0
-    frag_position = 0
-    #parity = bytearray(num_fragments)
-    parity_bit_position = num_fragments - 1
+  #if distributed_parity:
+  i = 0
+  parity_counter = 0
+  frag_position = 0
+  #parity = bytearray(num_fragments)
+  parity_bit_position = num_fragments - 1
 
-    while i < len(b):
+  while i < len(b):
 
-      #insert parity bit
-      if parity_counter == num_fragments - 1:
-        parity = 0
-        for byte in b[i - (num_fragments - 1):i]:
-          parity = parity ^ byte
-        outputFragments[frag_position].append(parity)
-        parity_counter = 0
+    #insert parity bit
+    if parity_counter == num_fragments - 1:
+      parity = 0
+      for byte in b[i - (num_fragments - 1):i]:
+        parity = parity ^ byte
+      outputFragments[frag_position].append(parity)
+      parity_counter = 0
 
-      outputFragments[frag_position].append(b[i])
-      frag_position += 1
-      parity_counter += 1
+    outputFragments[frag_position].append(b[i])
+    frag_position += 1
+    parity_counter += 1
 
-      if frag_position >= num_fragments:
-        frag_position = 0
+    if frag_position >= num_fragments:
+      frag_position = 0
 
-      i += 1
+    i += 1
 
 
-  else:
-    i = 0
-    while i < len(b):
-      arrayNum = 0
-      for frag in outputFragments:
-        if arrayNum == 0:
-          parity.append(0)
-          arrayNum = arrayNum + 1
-        if i < len(b):
-          frag.append(b[i])
-          parity[len(parity)-1] = parity[len(parity)-1] ^ b[i]
-          i += 1
+  # else:
+  #   i = 0
+  #   while i < len(b):
+  #     arrayNum = 0
+  #     for frag in outputFragments:
+  #       if arrayNum == 0:
+  #         parity.append(0)
+  #         arrayNum = arrayNum + 1
+  #       if i < len(b):
+  #         frag.append(b[i])
+  #         parity[len(parity)-1] = parity[len(parity)-1] ^ b[i]
+  #         i += 1
 
-  for output in outputFragments:
-    print(len(output))
+  # for output in outputFragments:
+  #   print(len(output))
 
 
   #create parity string
@@ -320,7 +339,7 @@ def splitIntoFragments(b: bytearray, num_fragments: int, distributed_parity=Fals
   # print("P " + str(len(p)))
   # print(p)
 
-  return outputFragments, parity
+  return outputFragments  #, parity
   
 
 def readConfig(config_file: str):
@@ -336,27 +355,34 @@ def readConfig(config_file: str):
   print(config)
   for cloud in config['clouds']:
     if cloud['cloud'].lower() in providers.DRIVERS:
+      cloud['cloud'] = cloud['cloud'].lower()
       print("something")
     else:
       print("ERROR: cloud provider", cloud['cloud'].lower(), "not found")
 
   return config
 
-def getCloudsFromConfig(config_file: str):
+def getCloudsFromConfig(config_file: str) -> List[cloud_storage.CloudStorage]:
   config = readConfig(config_file)
 
   cloud_storage_providers = []
 
   for cloud in config['clouds']:
     if cloud['cloud'].lower() in providers.DRIVERS:
-      c = CloudStorage()
+      c = cloud_storage.CloudStorage(cloud['cloud'], cloud['key'], cloud['secret'])
+      try:
+        c.driver.list_containers()
+      except:
+        print("ERROR: Failed to connect to cloud:", cloud['cloud'])
+        continue
       cloud_storage_providers.append(c)
     else:
       print("ERROR: cloud provider", cloud['cloud'].lower(), "not found")
 
+  print(cloud_storage_providers)
 
 def pushFragmentsToCloud(fragments: List[bytearray]):
-  
+  pass
 
 def getFragmentsFromCloud(file_name: str):
   pass
