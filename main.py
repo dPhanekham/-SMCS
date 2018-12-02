@@ -89,41 +89,46 @@ def main():
   for frag in fragments:
     print(frag)
 
-  #store to cloud here
 
-  #retrieve from cloud here
-
-  #order fragments the right way
-
-  # #stitch fragments back together
-  # cipher_text_bytearray = stitchFragments(fragments)
-  # print(cipher_text_bytearray)
-
-  # #get salt from file
-  # salt1 = getAndRemoveSaltFromFile(cipher_text_bytearray)
-  # print(cipher_text_bytearray)
-
-  # #generate key from salt (retrieved from cipher_text) and password
-  # key1 = generateKey(password, salt1)
-
-  # #decrypt ciphertext with key
-  # plain_text_bytearray = decryptByteArray(cipher_text_bytearray, key1)
-
-  # print(plain_text_bytearray)
-  # with open('test1.output', 'wb') as f2:
-  #   f2.write(plain_text_bytearray)
-
-  #readConfig("config.json")
+  #store frags to cloud here
   frag_file_path = 'frags/'
   fragNames = saveFragmentsToDisk(fragments, file_name, frag_file_path)
   print(fragNames)
   csps = getCloudsFromConfig("config.json")
   print(csps)
+
   #pushFragmentsToCloud(fragments, csps, file_name)
   pushFragmentsToCloudFromFiles(fragNames, csps, file_name, frag_file_path)
 
+  #retrieve from cloud here
   array = getFragmentsFromCloud(file_name, csps)
   print(array)
+  for i in range(len(array)):
+    array[i] = bytearray(array[i])
+
+  #order fragments the right way
+  fragsOrdered = orderFragmentsByHeader(array)
+  print(fragsOrdered)
+
+  #stitch fragments back together
+  cipher_text_bytearray = stitchFragments(fragsOrdered)
+  print(cipher_text_bytearray)
+
+  #get salt from file
+  salt1 = getAndRemoveSaltFromFile(cipher_text_bytearray)
+  print(cipher_text_bytearray)
+
+  #generate key from salt (retrieved from cipher_text) and password
+  key1 = generateKey(password, salt1)
+
+  #decrypt ciphertext with key
+  plain_text_bytearray = decryptByteArray(cipher_text_bytearray, key1)
+
+  print(plain_text_bytearray)
+  with open('test1.output', 'wb') as f2:
+    f2.write(plain_text_bytearray)
+
+
 
 def readBytesFromFile(file) -> bytearray:
   b = bytearray(file.read())
@@ -234,9 +239,25 @@ def addHeadersToFragments(fragments: List[bytearray], num_fragments: int,
     fragments[i].append(last_block)
     fragments[i].append(distributed_parity)
 
+# def removeHeadersFromFragments(fragments: List[bytearray]):
+#   pass
 
-def orderFragmentsByHeader(fragments: List[bytearray]):
+def deleteLocalFragments(file_name, frag_path):
   pass
+
+
+def orderFragmentsByHeader(fragments: List[bytearray]) -> List[bytearray]:
+  
+  fragmentsOrdered = [None] * len(fragments)
+  print("LENGTH FRAGMENTS:", len(fragments))
+  print("LENGTH FRAGMENTSORDERED:", len(fragmentsOrdered))
+  #TODO add check to see if num of frags we have matches the num in headers
+
+  for frag in fragments:
+    fragmentsOrdered[frag[1]] = frag
+
+  return fragmentsOrdered
+
 
 
 def calculateMissingFragment(arrays: List[bytearray]) -> bytearray:
@@ -415,6 +436,7 @@ def pushFragmentsToCloudFromFiles(fragNameList: List[str], clouds: List[cloud_st
       cloud_num = 0
 
 
+#does not currently work for azure because libcloud is stupid
 def pushFragmentsToCloud(fragments: List[bytearray], clouds: List[cloud_storage.CloudStorage], file_name: str):
   #name fragments
   cloud_num = 0
