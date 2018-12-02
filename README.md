@@ -1,10 +1,12 @@
 Secure Multi Cloud Storage
 
 -collaborators: 
+	
 	-make a new branch before you start adding code
 	-Must use python 3.6 or above
 	-Functions should include type hinting
 	-Functions should include docstring
+
 
 	-You need to do 'sudo pip install apache-libcloud'
 

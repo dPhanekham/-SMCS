@@ -6,6 +6,8 @@ import sys
 import base64
 import os
 import json
+import random
+import string
 
 from typing import List, Set, Dict, Tuple, Optional
 from cryptography.fernet import Fernet
@@ -72,7 +74,8 @@ def main():
 
   #read bytes from files
   plain_text = None
-  with open('test1.txt', 'rb') as f:
+  file_name = 'test1.txt'
+  with open(file_name, 'rb') as f:
     plain_text = readBytesFromFile(f)
 
   #encrypt plain text to cypher text
@@ -92,36 +95,40 @@ def main():
 
   #order fragments the right way
 
-  #stitch fragments back together
-  cipher_text_bytearray = stitchFragments(fragments)
-  print(cipher_text_bytearray)
+  # #stitch fragments back together
+  # cipher_text_bytearray = stitchFragments(fragments)
+  # print(cipher_text_bytearray)
 
-  #get salt from file
-  salt1 = getAndRemoveSaltFromFile(cipher_text_bytearray)
-  print(cipher_text_bytearray)
+  # #get salt from file
+  # salt1 = getAndRemoveSaltFromFile(cipher_text_bytearray)
+  # print(cipher_text_bytearray)
 
-  #generate key from salt (retrieved from cipher_text) and password
-  key1 = generateKey(password, salt1)
+  # #generate key from salt (retrieved from cipher_text) and password
+  # key1 = generateKey(password, salt1)
 
-  #decrypt ciphertext with key
-  plain_text_bytearray = decryptByteArray(cipher_text_bytearray, key1)
+  # #decrypt ciphertext with key
+  # plain_text_bytearray = decryptByteArray(cipher_text_bytearray, key1)
 
-  print(plain_text_bytearray)
-  with open('test1.output', 'wb') as f2:
-    f2.write(plain_text_bytearray)
+  # print(plain_text_bytearray)
+  # with open('test1.output', 'wb') as f2:
+  #   f2.write(plain_text_bytearray)
 
   #readConfig("config.json")
-
+  frag_file_path = 'frags/'
+  fragNames = saveFragmentsToDisk(fragments, file_name, frag_file_path)
+  print(fragNames)
   csps = getCloudsFromConfig("config.json")
+  print(csps)
+  #pushFragmentsToCloud(fragments, csps, file_name)
+  pushFragmentsToCloudFromFiles(fragNames, csps, file_name, frag_file_path)
 
+  array = getFragmentsFromCloud(file_name, csps)
+  print(array)
 
 def readBytesFromFile(file) -> bytearray:
   b = bytearray(file.read())
   return b
 
-
-def stitchFragments(b: List[bytearray], parity: bytearray) -> bytearray:
-  pass
 
 def stitchFragments(b: List[bytearray]) -> bytearray:
   
@@ -379,13 +386,61 @@ def getCloudsFromConfig(config_file: str) -> List[cloud_storage.CloudStorage]:
     else:
       print("ERROR: cloud provider", cloud['cloud'].lower(), "not found")
 
-  print(cloud_storage_providers)
+  return cloud_storage_providers
 
-def pushFragmentsToCloud(fragments: List[bytearray]):
-  pass
+def saveFragmentsToDisk(fragments: List[bytearray], file_name, file_path = '') -> List[str]:
+  #returns a list of filenames for the fragments saved to disk
+  fragNameList = []
+  for frag in fragments:
+    frag_name = name = file_name + ''.join(random.choices(string.ascii_letters + string.digits, k=16))
+    frag_path = file_path + frag_name
+    fragNameList.append(frag_name)
+    with open(frag_path, 'wb') as f:
+      f.write(frag)
+  return fragNameList
 
-def getFragmentsFromCloud(file_name: str):
-  pass
+def pushFragmentsToCloudFromFiles(fragNameList: List[str], clouds: List[cloud_storage.CloudStorage],
+                                  file_name: str, frag_path=''):
+  cloud_num = 0
+  print("PUSH TO CLOUD")
+  print(file_name)
+  for frag_name in fragNameList:
+    print(frag_name)
+    clouds[cloud_num].setMetaData(file_name=file_name)
+    file_path = frag_path + frag_name
+    print(file_path)
+    clouds[cloud_num].uploadObjectFromFile(file_path, frag_name)
+    cloud_num += 1
+    if cloud_num >= len(clouds):
+      cloud_num = 0
+
+
+def pushFragmentsToCloud(fragments: List[bytearray], clouds: List[cloud_storage.CloudStorage], file_name: str):
+  #name fragments
+  cloud_num = 0
+  print("PUSH TO CLOUD")
+  print(file_name)
+  for frag in fragments:
+    frag_name = name = file_name + ''.join(random.choices(string.ascii_letters + string.digits, k=16))
+
+    print(frag_name)
+    print(clouds[cloud_num])
+    clouds[cloud_num].setMetaData(file_name=file_name)
+    clouds[cloud_num].uploadObject(frag, frag_name)
+
+    cloud_num += 1
+    if cloud_num >= len(clouds):
+      cloud_num = 0
+
+def getFragmentsFromCloud(file_name: str, clouds: List[cloud_storage.CloudStorage]):
+  #give prefix
+  #download all with prefix
+  fragments = []
+
+  for cloud in clouds:
+    fragments = fragments + cloud.getFilesWithPrefix(file_name)
+
+  return fragments
 
 
 

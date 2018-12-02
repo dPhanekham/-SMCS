@@ -44,8 +44,12 @@ class CloudStorage():
 
     self.driver = self.cls(key=self.key, secret=self.secret)
     self.container = None
+
     self.containers = self.listContainersWithPrefix('smcs-')
+    if not self.containers:
+      self.containers.append(self.createContainer())
     print(self.containers)
+
     self.files = []
     self.metaData = {'meta_data': {}}
     self.setMetaData(owner, date_str)
@@ -60,13 +64,13 @@ class CloudStorage():
 
     return True
 
-  def setMetaData(self, owner, date_str, file_name = None):
+  def setMetaData(self, owner=None, date_str=None, file_name = None):
     if owner:
-      metaData['meta_data']['owner'] = owner
+      self.metaData['meta_data']['owner'] = owner
     if date_str:
-      metaData['meta_data']['created'] = date_str
+      self.metaData['meta_data']['created'] = date_str
     if file_name:
-      metaData['meta_data']['file_name'] = file_name
+      self.metaData['meta_data']['file_name'] = file_name
 
   def listContainers(self):
     return self.driver.list_containers()
@@ -79,14 +83,13 @@ class CloudStorage():
        containersWithPrefix.append(container)
     return containersWithPrefix
 
-
-
   def createContainer(self, container_name=None):
     if container_name:
-      self.driver.create_container(container_name)
+      return self.driver.create_container(container_name)
     else:
-      name = 'smcs-' + ''.join(random.choices(string.ascii_letters + string.digits, k=16))
-      self.driver.create_container(name)
+      name = 'smcs-' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=16))
+      return self.driver.create_container(name)
+
 
   def deleteContainer(self, container):
     self.driver.delete_container(container)
@@ -94,7 +97,14 @@ class CloudStorage():
   def listObjects(self, container):
     self.driver.list_container_objects(container)
 
-  def listObjectsWithPrefix(self, container):
+  def listObjectsWithPrefix(self, prefix, container=None):
+
+    if not container:
+      print("NOT container")
+      container = self.containers[0]
+
+    print(type(container))
+    print(container)
     objList = self.driver.list_container_objects(container)
     objsWithPrefix = []
     for obj in objList:
@@ -102,20 +112,42 @@ class CloudStorage():
        objsWithPrefix.append(obj)
     return objsWithPrefix
 
-  def uploadObjectFromFile(self, file_path, file_name, container):
-    upload_object(file_path, container, object_name, 
-                  extra=None, verify_hash=True, 
-                  ex_storage_class=None)
+  def uploadObjectFromFile(self, file_path, fragment_name, container=None):
 
-  def uploadObject(self, container, fragment: bytearray):
-    iterator = iter(fragment)
-    obj = driver.upload_object_via_stream(iterator=iterator,
-                                          container=container,
-                                          object_name='rabbit.svg',
-                                          extra=extra)
+    if container == None:
+      if not self.containers:
+        self.containers.append(self.createContainer())
 
-  def uploadObjects(self):
-    pass
+      o = self.driver.upload_object(file_path, self.containers[0], fragment_name, 
+                  extra=self.metaData)
+
+    else:
+      self.driver.upload_object(file_path, container, object_name, 
+                    extra=self.metaData)
+
+  def uploadObject(self, fragment: bytearray, fragment_name: str, container = None):
+
+    if container == None:
+      if not self.containers:
+        self.containers.append(self.createContainer())
+
+      iterator = iter(fragment)
+      obj = self.driver.upload_object_via_stream(iterator=iterator,
+                                            container=self.containers[0],
+                                            object_name=fragment_name,
+                                            extra=self.metaData)
+    else:
+      iterator = iter(fragment)
+      obj = self.driver.upload_object_via_stream(iterator=iterator,
+                                            container=container,
+                                            object_name=fragment_name,
+                                            extra=self.metaData)
+
+    # with open(FILE_PATH, 'rb') as iterator:
+    # obj = driver.upload_object_via_stream(iterator=iterator,
+    #                                       container=container,
+    #                                       object_name='backup.tar.gz',
+    #                                       extra=extra)
 
   def getFile(self, file_name: str) -> bytes:
     """Gets a File from cloud given the filename
@@ -170,8 +202,13 @@ class CloudStorage():
 
 
   def getFilesWithPrefix(self, prefix):
-    objs = listObjectsWithPrefix(prefix)
-    return getFilesFromObjectList(objs)
+    objs = self.listObjectsWithPrefix(prefix)
+    return self.getFilesFromObjectList(objs)
+
+  def deleteFilesWithPrefix(self, prefix):
+    objs = self.listObjectsWithPrefix(prefix)
+    for obj in objs:
+      self.driver.delete_object(obj)
 
 
   def isJson(self, myjson):
