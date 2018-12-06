@@ -6,6 +6,7 @@ import os
 import json
 import random
 import string
+import csv
 
 from typing import List, Set, Dict, Tuple, Optional
 from cryptography.fernet import Fernet
@@ -27,12 +28,12 @@ import main
 
 class Ui_Form(object):
 
+
     def readFile(self, fileName):
         if (fileName == ''):
             return " "
         file = open(fileName, 'r')
         return file.readline()
-
 
     def setupUi(self, Form):
         self.setWindowTitle(self.title)
@@ -162,37 +163,45 @@ class Ui_Form(object):
 
     @pyqtSlot()
     def on_click2(self):
-        self.remoteFiles.setText("File in cloud: None")
+        files = "\n"
+        if (os.path.exists("localCloud.data")):
+            with open('localCloud.data') as csv_file:
+                csv_read = csv.reader(csv_file, delimiter=',')
+                for row in csv_read:
+                    files = files + row[0] + "\n"
+        self.remoteFiles.setText("Files in cloud: " + files)
 
     @pyqtSlot()
     def on_clickRetrieve(self):
-        file_name = self.retrieveFileName.textbox()
-        array = getFragmentsFromCloud(file_name, csps)
-        print(array)
-        for i in range(len(array)):
-            array[i] = bytearray(array[i])
+        file_name = self.retrieveFileName.text()
+        if (csps is not None):
+            array = getFragmentsFromCloud(file_name, csps)
+            print(array)
+            for i in range(len(array)):
+                array[i] = bytearray(array[i])
 
-        #order fragments the right way
-        fragsOrdered = orderFragmentsByHeader(array)
-        print(fragsOrdered)
+            #order fragments the right way
+            fragsOrdered = orderFragmentsByHeader(array)
+            print(fragsOrdered)
 
-        #stitch fragments back together
-        cipher_text_bytearray = stitchFragments(fragsOrdered)
-        print(cipher_text_bytearray)
+            #stitch fragments back together
+            cipher_text_bytearray = stitchFragments(fragsOrdered)
+            print(cipher_text_bytearray)
 
-        #get salt from file
-        salt1 = getAndRemoveSaltFromFile(cipher_text_bytearray)
-        print(cipher_text_bytearray)
+            #get salt from file
+            salt1 = getAndRemoveSaltFromFile(cipher_text_bytearray)
+            print(cipher_text_bytearray)
 
-        #generate key from salt (retrieved from cipher_text) and password
-        key1 = generateKey(password, salt1)
+            #generate key from salt (retrieved from cipher_text) and password
+            key1 = generateKey(password, salt1)
 
-        #decrypt ciphertext with key
-        plain_text_bytearray = decryptByteArray(cipher_text_bytearray, key1)
+            #decrypt ciphertext with key
+            plain_text_bytearray = decryptByteArray(cipher_text_bytearray, key1)
 
-        print(plain_text_bytearray)
-        with open('test1.output', 'wb') as f2:
-            f2.write(plain_text_bytearray)
+            print(plain_text_bytearray)
+            file_name2 = file_name + ".output"
+            with open(file_name2, 'wb') as f2:
+                f2.write(plain_text_bytearray)
 
 
 class Widget(QtWidgets.QWidget, Ui_Form):
@@ -216,34 +225,38 @@ class Widget(QtWidgets.QWidget, Ui_Form):
             buttonReply = QMessageBox.question(self, 'Message - Cloud Storage', "You are wanting to upload: " + fileName, QMessageBox.Yes, QMessageBox.No)
             if buttonReply == QMessageBox.Yes:
                 print('Yes clicked.')
-                self.uploadConfirm.setText("File to upload: " + fileName)
-                # To cloud
-                password = self.secretInput.text()
+                if (csps is not None):
+                    self.uploadConfirm.setText("File to upload: " + fileName)
+                    # To cloud
+                    password = self.secretInput.text()
 
-                salt = generateSalt()
+                    salt = generateSalt()
 
-                #generate key from salt and password
-                key = generateKey(password, salt)
+                    #generate key from salt and password
+                    key = generateKey(password, salt)
 
-                #read bytes from files
-                plain_text = None
-                file_name = 'test1.txt'
+                    #read bytes from files
+                    plain_text = None
+                    file_name = self.retrieveFileName.text()
 
-                with open(file_name, 'rb') as f:
-                    plain_text = readBytesFromFile(f)
+                    with open(file_name, 'rb') as f:
+                        plain_text = readBytesFromFile(f)
 
-                #encrypt plain text to cypher text
-                cipher_text = encryptByteArray(plain_text, key, salt)
+                    #encrypt plain text to cypher text
+                    cipher_text = encryptByteArray(plain_text, key, salt)
 
-                #split into fragments
-                fragments = splitIntoFragments(cipher_text, 6)
+                    #split into fragments
+                    fragments = splitIntoFragments(cipher_text, 6)
 
-                #store frags to cloud here
-                frag_file_path = 'frags/'
-                fragNames = saveFragmentsToDisk(fragments, file_name, frag_file_path)
+                    #store frags to cloud here
+                    frag_file_path = 'frags/'
+                    fragNames = saveFragmentsToDisk(fragments, file_name, frag_file_path)
 
-                #pushFragmentsToCloud(fragments, csps, file_name)
-                pushFragmentsToCloudFromFiles(fragNames, csps, file_name, frag_file_path)
+                    #pushFragmentsToCloud(fragments, csps, file_name)
+                    pushFragmentsToCloudFromFiles(fragNames, csps, file_name, frag_file_path)
+                    with open("localCloud.data", "a") as f3:
+                        f3.write(file_name + ",")
+
             if buttonReply == QMessageBox.No:
                 print('No clicked.')
                 self.uploadConfirm.setText("File to upload: None")
@@ -545,6 +558,7 @@ def getFragmentsFromCloud(file_name: str, clouds: List[cloud_storage.CloudStorag
 
 if __name__ == "__main__":
     import sys
+    csps = None
     app = QtWidgets.QApplication(sys.argv)
     Form = Widget()
     ui = Ui_Form()
