@@ -47,6 +47,7 @@ class Ui_Form(object):
 
         # Create textbox for config File Input
         self.textbox = QLineEdit(self)
+        self.textbox.setText("config.json")
         self.textbox.move(20, 20)
         self.textbox.resize(280, 20)
 
