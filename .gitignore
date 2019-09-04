@@ -3,3 +3,5 @@ SMCS.sublime-project
 result.*
 __pycache__/*
 SMCS_environment/*
+.idea/*
+*.code-workspace
