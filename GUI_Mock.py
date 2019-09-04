@@ -517,10 +517,10 @@ def pushFragmentsToCloudFromFiles(fragNameList: List[str], clouds: List[cloud_st
   print(file_name)
   for frag_name in fragNameList:
     print(frag_name)
-    clouds[cloud_num].setMetaData(file_name=file_name)
+    clouds[cloud_num].set_metadata(file_name=file_name)
     file_path = frag_path + frag_name
     print(file_path)
-    clouds[cloud_num].uploadObjectFromFile(file_path, frag_name)
+    clouds[cloud_num].upload_object_from_file(file_path, frag_name)
     cloud_num += 1
     if cloud_num >= len(clouds):
       cloud_num = 0
@@ -537,8 +537,8 @@ def pushFragmentsToCloud(fragments: List[bytearray], clouds: List[cloud_storage.
 
     print(frag_name)
     print(clouds[cloud_num])
-    clouds[cloud_num].setMetaData(file_name=file_name)
-    clouds[cloud_num].uploadObject(frag, frag_name)
+    clouds[cloud_num].set_metadata(file_name=file_name)
+    clouds[cloud_num].upload_object(frag, frag_name)
 
     cloud_num += 1
     if cloud_num >= len(clouds):
@@ -550,7 +550,7 @@ def getFragmentsFromCloud(file_name: str, clouds: List[cloud_storage.CloudStorag
   fragments = []
 
   for cloud in clouds:
-    fragments = fragments + cloud.getFilesWithPrefix(file_name)
+    fragments = fragments + cloud.get_files_with_prefix(file_name)
 
   return fragments
 

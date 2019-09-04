@@ -64,9 +64,9 @@ def main():
   #here user will input password
   password = "password"
   #random salt is generated (later appended to cipher text)
-  salt = generateSalt()
+  salt = generate_salt()
   #generate key from salt and password
-  key = generateKey(password, salt)
+  key = generate_key(password, salt)
   print(key)
   print(salt)
 
@@ -76,15 +76,15 @@ def main():
   plain_text = None
   file_name = 'test1.txt'
   with open(file_name, 'rb') as f:
-    plain_text = readBytesFromFile(f)
+    plain_text = read_bytes_from_file(f)
 
   #encrypt plain text to cypher text
-  cipher_text = encryptByteArray(plain_text, key, salt)
+  cipher_text = encrypt_byte_array(plain_text, key, salt)
   print(cipher_text)
   #cipher_text = plain_text
 
   #split into fragments
-  fragments = splitIntoFragments(cipher_text, 6)
+  fragments = split_into_fragments(cipher_text, 6)
 
   for frag in fragments:
     print(frag)
@@ -115,23 +115,24 @@ def main():
 
   #readConfig("config.json")
   frag_file_path = 'frags/'
-  fragNames = saveFragmentsToDisk(fragments, file_name, frag_file_path)
-  print(fragNames)
-  csps = getCloudsFromConfig("config.json")
+  frag_names = save_fragment_to_disk(fragments, file_name, frag_file_path)
+  print(frag_names)
+  csps = get_clouds_from_config("config.json")
   print(csps)
   #pushFragmentsToCloud(fragments, csps, file_name)
-  pushFragmentsToCloudFromFiles(fragNames, csps, file_name, frag_file_path)
+  push_fragments_to_cloud_from_files(frag_names, csps, file_name, frag_file_path)
 
-  array = getFragmentsFromCloud(file_name, csps)
-  print(array)
+  frag_array = get_fragments_from_cloud(file_name, csps)
+  print(frag_array)
 
-def readBytesFromFile(file) -> bytearray:
+
+def read_bytes_from_file(file) -> bytearray:
   b = bytearray(file.read())
   return b
 
 
-def stitchFragments(b: List[bytearray]) -> bytearray:
-  
+def stitch_fragments(b: List[bytearray]) -> bytearray:
+
   stitched_bytearray = bytearray()
   total_length = 0
   num_fragments = len(b)
@@ -164,11 +165,12 @@ def stitchFragments(b: List[bytearray]) -> bytearray:
   return stitched_bytearray
 
 
-def generateSalt(length = 16) -> bytes:
+def generate_salt(length = 16) -> bytes:
   salt = os.urandom(16)
   return salt
 
-def generateKey(password: str, salt: bytes) -> bytes:
+
+def generate_key(password: str, salt: bytes) -> bytes:
   #TODO maybe change this in utf16
   if type(password) is not bytes:
     password = password.encode('utf8')
@@ -183,26 +185,27 @@ def generateKey(password: str, salt: bytes) -> bytes:
   key = base64.urlsafe_b64encode(kdf.derive(password))
   return key
 
-def concatSaltWithFile(cipher_text: bytearray, salt: bytes):
-  cipher_text.extend(salt)
-  
 
-def getAndRemoveSaltFromFile(cipher_text: bytearray) -> bytes:
+def concat_salt_with_file(cipher_text: bytearray, salt: bytes):
+  cipher_text.extend(salt)
+
+
+def get_and_remove_salt_from_file(cipher_text: bytearray) -> bytes:
   salt = bytes(cipher_text[len(cipher_text) - 16:])
   del cipher_text[len(cipher_text) - 16:]
   return salt
 
 
-def encryptByteArray(plain_text: bytearray, key: bytes, salt: bytes) -> bytearray:
+def encrypt_byte_array(plain_text: bytearray, key: bytes, salt: bytes) -> bytearray:
   cipher_suite = Fernet(key)
   cipher_text = cipher_suite.encrypt(bytes(plain_text))
   cipher_array = bytearray(cipher_text)
-  concatSaltWithFile(cipher_array, salt)
+  concat_salt_with_file(cipher_array, salt)
   print(cipher_array)
   return cipher_array
 
 
-def decryptByteArray(cipher_text: bytearray, key: bytes) -> bytearray:
+def decrypt_byte_array(cipher_text: bytearray, key: bytes) -> bytearray:
   #TODO maye don't have to remove salt here?
   cipher_suite = Fernet(key)
   plain_text = cipher_suite.decrypt(bytes(cipher_text))
@@ -210,8 +213,8 @@ def decryptByteArray(cipher_text: bytearray, key: bytes) -> bytearray:
 
 
 # TODO maybe do this when the fragments are created
-def addHeadersToFragments(fragments: List[bytearray], num_fragments: int,
-                          total_file_length_bytes: int, distributed_parity: bool):
+def add_headers_to_fragments(fragments: List[bytearray], num_fragments: int,
+                             total_file_length_bytes: int, distributed_parity: bool):
   """Add headers to fragments.
   
   Add headers to all fragments.
@@ -235,11 +238,11 @@ def addHeadersToFragments(fragments: List[bytearray], num_fragments: int,
     fragments[i].append(distributed_parity)
 
 
-def orderFragmentsByHeader(fragments: List[bytearray]):
+def order_fragments_by_header(fragments: List[bytearray]):
   pass
 
 
-def calculateMissingFragment(arrays: List[bytearray]) -> bytearray:
+def calculate_missing_fragment(arrays: List[bytearray]) -> bytearray:
   """Calculate a missing fragment
   
   If 1 fragment is missing from the file, this method can caculate
@@ -269,7 +272,7 @@ def calculateMissingFragment(arrays: List[bytearray]) -> bytearray:
   # with open('result.jpg', 'w') as f2:
   #   f2.write(result.decode('utf8'))
 
-def splitIntoFragments(b: bytearray, num_fragments: int) -> List[bytearray]:
+def split_into_fragments(b: bytearray, num_fragments: int) -> List[bytearray]:
   """[summary]
   
   [description]
@@ -290,10 +293,10 @@ def splitIntoFragments(b: bytearray, num_fragments: int) -> List[bytearray]:
   for i in range(num_fragments):
     outputFragments.append(bytearray())
 
-  addHeadersToFragments(outputFragments, 
-                        num_fragments, 
-                        total_file_length_bytes,
-                        True) 
+  add_headers_to_fragments(outputFragments,
+                           num_fragments,
+                           total_file_length_bytes,
+                           True)
 
   #if distributed_parity:
   i = 0
@@ -347,9 +350,9 @@ def splitIntoFragments(b: bytearray, num_fragments: int) -> List[bytearray]:
   # print(p)
 
   return outputFragments  #, parity
-  
 
-def readConfig(config_file: str):
+
+def read_config(config_file: str):
   config = None
   with open(config_file, 'r') as f:
     config = f.read()
@@ -369,8 +372,8 @@ def readConfig(config_file: str):
 
   return config
 
-def getCloudsFromConfig(config_file: str) -> List[cloud_storage.CloudStorage]:
-  config = readConfig(config_file)
+def get_clouds_from_config(config_file: str) -> List[cloud_storage.CloudStorage]:
+  config = read_config(config_file)
 
   cloud_storage_providers = []
 
@@ -388,7 +391,7 @@ def getCloudsFromConfig(config_file: str) -> List[cloud_storage.CloudStorage]:
 
   return cloud_storage_providers
 
-def saveFragmentsToDisk(fragments: List[bytearray], file_name, file_path = '') -> List[str]:
+def save_fragment_to_disk(fragments: List[bytearray], file_name, file_path ='') -> List[str]:
   #returns a list of filenames for the fragments saved to disk
   fragNameList = []
   for frag in fragments:
@@ -399,23 +402,23 @@ def saveFragmentsToDisk(fragments: List[bytearray], file_name, file_path = '') -
       f.write(frag)
   return fragNameList
 
-def pushFragmentsToCloudFromFiles(fragNameList: List[str], clouds: List[cloud_storage.CloudStorage],
-                                  file_name: str, frag_path=''):
+def push_fragments_to_cloud_from_files(fragNameList: List[str], clouds: List[cloud_storage.CloudStorage],
+                                       file_name: str, frag_path=''):
   cloud_num = 0
   print("PUSH TO CLOUD")
   print(file_name)
   for frag_name in fragNameList:
     print(frag_name)
-    clouds[cloud_num].setMetaData(file_name=file_name)
+    clouds[cloud_num].set_metadata(file_name=file_name)
     file_path = frag_path + frag_name
     print(file_path)
-    clouds[cloud_num].uploadObjectFromFile(file_path, frag_name)
+    clouds[cloud_num].upload_object_from_file(file_path, frag_name)
     cloud_num += 1
     if cloud_num >= len(clouds):
       cloud_num = 0
 
 
-def pushFragmentsToCloud(fragments: List[bytearray], clouds: List[cloud_storage.CloudStorage], file_name: str):
+def push_fragments_to_cloud(fragments: List[bytearray], clouds: List[cloud_storage.CloudStorage], file_name: str):
   #name fragments
   cloud_num = 0
   print("PUSH TO CLOUD")
@@ -425,20 +428,20 @@ def pushFragmentsToCloud(fragments: List[bytearray], clouds: List[cloud_storage.
 
     print(frag_name)
     print(clouds[cloud_num])
-    clouds[cloud_num].setMetaData(file_name=file_name)
-    clouds[cloud_num].uploadObject(frag, frag_name)
+    clouds[cloud_num].set_metadata(file_name=file_name)
+    clouds[cloud_num].upload_object(frag, frag_name)
 
     cloud_num += 1
     if cloud_num >= len(clouds):
       cloud_num = 0
 
-def getFragmentsFromCloud(file_name: str, clouds: List[cloud_storage.CloudStorage]):
+def get_fragments_from_cloud(file_name: str, clouds: List[cloud_storage.CloudStorage]):
   #give prefix
   #download all with prefix
   fragments = []
 
   for cloud in clouds:
-    fragments = fragments + cloud.getFilesWithPrefix(file_name)
+    fragments = fragments + cloud.get_files_with_prefix(file_name)
 
   return fragments
 

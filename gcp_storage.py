@@ -36,7 +36,7 @@ class GCPCloudStorage(CloudStorage):
     setMetaData(owner, date_str)
     pass
 
-  def setMetaData(self, owner, date_str, object_name):
+  def set_metadata(self, owner, date_str, object_name):
     if owner:
       metaData['meta_data']['owner'] = owner
     if date_str:
@@ -44,10 +44,10 @@ class GCPCloudStorage(CloudStorage):
 
     metaData['meta_data'][''] = object_name
 
-  def createContainer(self, container_name):
+  def create_container(self, container_name):
     self.driver.create_container(container_name)
 
-  def deleteContainer(self, container_name):
+  def delete_container(self, container_name):
 
     self.driver.delete_container()
 
@@ -60,18 +60,18 @@ class GCPCloudStorage(CloudStorage):
   def uploadFiles(self):
     pass
 
-  def getFile(self, file_name) -> bytes:
+  def get_file(self, file_name) -> bytes:
     obj = driver.get_object(self.container_name, file_name)
     gen = driver.download_object_as_stream(obj)
     file_as_bytes = next(gen)
     return file_as_bytes
 
-  def getFiles(self, files):
+  def get_files(self, files):
     file_list = []
     for f in files:
       file_list.append(getFile(f))
 
-  def isJson(myjson):
+  def is_json(myjson):
     try:
       json_object = json.loads(myjson)
     except ValueError:
