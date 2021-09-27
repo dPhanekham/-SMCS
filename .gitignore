@@ -2,3 +2,6 @@ SMCS.sublime-workspace
 SMCS.sublime-project
 result.*
 __pycache__/*
+frags/
+*.json
+*.Identifier
