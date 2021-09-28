@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import math
+import array
 import sys
 import base64
 import os
@@ -261,7 +263,9 @@ def orderFragmentsByHeader(fragments: List[bytearray]) -> List[bytearray]:
     return fragmentsOrdered
 
 
-def calculateMissingFragment(arrays: List[bytearray]) -> bytearray:
+# This function is not used and I'm not 100% sure it works
+# I'm not even sure I got the function signature right
+def calculateMissingFragment(arrays: List[bytearray], p: List[bool]) -> bytearray:
     """Calculate a missing fragment
 
     If 1 fragment is missing from the file, this method can caculate
@@ -272,16 +276,16 @@ def calculateMissingFragment(arrays: List[bytearray]) -> bytearray:
       parity: [description]
     """
     b2_recreated = bytearray()
-    for i in range(len(outputArrays[0])):
+    for i in range(len(arrays[0])):
         if i < len(p):
-            b2_recreated.append(outputArrays[0][i] ^ p[i])
+            b2_recreated.append(arrays[0][i] ^ p[i])
 
     print("b2_rec " + str(len(b2_recreated)))
     print(b2_recreated)
 
     result = bytearray()
-    for i in range(len(outputArrays[0])):
-        result.append(outputArrays[0][i])
+    for i in range(len(arrays[0])):
+        result.append(arrays[0][i])
         if i < len(b2_recreated):
             result.append(b2_recreated[i])
 

@@ -5,5 +5,4 @@ __pycache__/*
 frags/
 *.json
 *.Identifier
-.prettierignore
 *.output

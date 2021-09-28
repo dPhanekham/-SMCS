@@ -8,7 +8,7 @@ from libcloud.storage import providers
 from libcloud.storage.providers import get_driver
 from libcloud.storage.drivers import google_storage
 from libcloud.storage.drivers.google_storage import GoogleStorageDriver
-#from cloud_storage import CloudStorage
+# from cloud_storage import CloudStorage
 from libcloud.storage.base import Object
 from typing import List, Set, Dict, Tuple, Optional
 
@@ -29,7 +29,7 @@ class CloudStorage():
         self.cloud = cloud
         self.key = key
         self.secret = None
-        #self.container_name = 'smcs-123'
+        # self.container_name = 'smcs-123'
         if self.isJson(secret):
             self.secret = secret['private_key']
         else:
@@ -60,7 +60,7 @@ class CloudStorage():
         try:
             self.driver.list_containers()
         except:
-            print("ERROR: Failed to connect to cloud:", cloud['cloud'])
+            print("ERROR: Failed to connect to cloud: ", self.cloud)
             return False
 
         return True
@@ -88,9 +88,8 @@ class CloudStorage():
         if container_name:
             return self.driver.create_container(container_name)
         else:
-            name = 'smcs-' + \
-                ''.join(random.choices(
-                    string.ascii_lowercase + string.digits, k=16))
+            name = 'smcs-' + ''.join(random.choices(
+                string.ascii_lowercase + string.digits, k=16))
             return self.driver.create_container(name)
 
     def deleteContainer(self, container):
@@ -125,7 +124,7 @@ class CloudStorage():
 
         else:
             self.driver.upload_object(
-                file_path, container, object_name, extra=self.metaData)
+                file_path, container, fragment_name, extra=self.metaData)
 
     def uploadObject(self, fragment: bytearray, fragment_name: str, container=None):
 
@@ -180,7 +179,7 @@ class CloudStorage():
         """
         file_list = []
         for f in file_names:
-            file_list.append(getFile(f))
+            file_list.append(self.getFile(f))
 
         return file_list
 
