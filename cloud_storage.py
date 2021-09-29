@@ -92,8 +92,17 @@ class CloudStorage():
                 string.ascii_lowercase + string.digits, k=16))
             return self.driver.create_container(name)
 
-    def deleteContainer(self, container):
-        self.driver.delete_container(container)
+    def cleanUp(self, deleteContainer=True):
+        if self.container == None:
+            print("ERROR: trying to clean up container but no container is selected")
+        else:
+            print("Cleaning up cloud: " + self.cloud)
+            if deleteContainer:
+                self.driver.delete_container(self.container)
+            else:
+                objList = self.driver.list_container_objects(self.container)
+                for obj in objList:
+                    self.driver.delete_object(obj)
 
     def listObjects(self, container):
         self.driver.list_container_objects(container)
@@ -113,18 +122,15 @@ class CloudStorage():
                 objsWithPrefix.append(obj)
         return objsWithPrefix
 
-    def uploadObjectFromFile(self, file_path, fragment_name, container=None):
+    def uploadObjectFromFile(self, file_path, fragment_name):
 
-        if container == None:
+        if self.container == None:
             if not self.containers:
                 self.containers.append(self.createContainer())
+                self.container = self.containers[0]
 
-            o = self.driver.upload_object(
-                file_path, self.containers[0], fragment_name, extra=self.metaData)
-
-        else:
-            self.driver.upload_object(
-                file_path, container, fragment_name, extra=self.metaData)
+        self.driver.upload_object(
+            file_path, self.container, fragment_name, extra=self.metaData)
 
     def uploadObject(self, fragment: bytearray, fragment_name: str, container=None):
 
