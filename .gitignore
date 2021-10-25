@@ -6,3 +6,7 @@ frags/
 *.json
 *.Identifier
 *.output
+/SMCS.pyproj
+/.vs
+/SMCS.sln
+/SMCS.pyperf
