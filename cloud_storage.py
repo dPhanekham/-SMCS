@@ -42,7 +42,8 @@ class CloudStorage():
         else:
             print("cloud", cloud, "not supported")
 
-        self.driver = self.cls(key=self.key, secret=self.secret, project='focal-healer-271320')
+        self.driver = self.cls(
+            key=self.key, secret=self.secret, project='focal-healer-271320')
         self.container = None
 
         self.containers = self.listContainersWithPrefix('smcs-')
@@ -87,7 +88,9 @@ class CloudStorage():
         if container_name:
             return self.driver.create_container(container_name)
         else:
-            name = 'smcs-' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=16))
+            name = 'smcs-' + \
+                ''.join(random.choices(
+                    string.ascii_lowercase + string.digits, k=16))
             return self.driver.create_container(name)
 
     def cleanUp(self, removeExistingContainers=False):
@@ -129,7 +132,8 @@ class CloudStorage():
                 self.containers.append(self.createContainer())
             self.container = self.containers[0]
 
-        self.driver.upload_object(file_path, self.container, fragment_name, extra=self.metaData)
+        self.driver.upload_object(
+            file_path, self.container, fragment_name, extra=self.metaData)
 
     def uploadObject(self, fragment: bytearray, fragment_name: str, container=None):
 

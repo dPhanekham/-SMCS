@@ -122,6 +122,8 @@ def main():
 
     # removes the containers from the cloud
     # cleanupClouds(csps)
+
+
 def readBytesFromFile(file) -> bytearray:
     b = bytearray(file.read())
     return b
@@ -171,10 +173,10 @@ def generateKey(password: str, salt: bytes) -> bytes:
     if type(password) is not bytes:
         password = password.encode('utf8')
     kdf = PBKDF2HMAC(algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=100000,
-        backend=default_backend())
+                     length=32,
+                     salt=salt,
+                     iterations=100000,
+                     backend=default_backend())
     key = base64.urlsafe_b64encode(kdf.derive(password))
     return key
 
@@ -231,6 +233,8 @@ def addHeadersToFragments(fragments: List[bytearray], num_fragments: int,
 
 # def removeHeadersFromFragments(fragments: List[bytearray]):
 #   pass
+
+
 def deleteLocalFragments(file_name, frag_path):
     pass
 
@@ -279,6 +283,8 @@ def calculateMissingFragment(arrays: List[bytearray], p: List[bool]) -> bytearra
     # print(b2_recreated[len(b2_recreated)-1])
     # with open('result.jpg', 'w') as f2:
     #   f2.write(result.decode('utf8'))
+
+
 def splitIntoFragments(b: bytearray, num_fragments: int) -> List[bytearray]:
     """[summary]
 
@@ -355,6 +361,8 @@ def splitIntoFragments(b: bytearray, num_fragments: int) -> List[bytearray]:
     # print(p)
 
     return outputFragments  # , parity
+
+
 def readConfig(config_file: str):
     config = None
     with open(config_file, 'r') as f:
@@ -381,7 +389,8 @@ def getCloudsFromConfig(config_file: str) -> List[cloud_storage.CloudStorage]:
 
     for cloud in config['clouds']:
         if cloud['cloud'].lower() in providers.DRIVERS:
-            c = cloud_storage.CloudStorage(cloud['cloud'], cloud['key'], cloud['secret'])
+            c = cloud_storage.CloudStorage(
+                cloud['cloud'], cloud['key'], cloud['secret'])
             try:
                 c.driver.list_containers()
             except:
@@ -427,7 +436,8 @@ def pushFragmentsToCloud(fragments: List[bytearray], clouds: List[cloud_storage.
     print("Uploading files to cloud...")
     print(file_name)
     for frag in fragments:
-        frag_name = name = file_name + ''.join(random.choices(string.ascii_letters + string.digits, k=16))
+        frag_name = name = file_name + \
+            ''.join(random.choices(string.ascii_letters + string.digits, k=16))
 
         print("File: " + frag_name + " uplaoded to " + clouds[cloud_num].cloud)
         clouds[cloud_num].setMetaData(file_name=file_name)
