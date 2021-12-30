@@ -7,6 +7,7 @@ import os
 import json
 import random
 import string
+import time
 
 from typing import List, Set, Dict, Tuple, Optional
 from cryptography.fernet import Fernet
@@ -18,21 +19,11 @@ from libcloud.storage import providers
 
 import cloud_storage
 
-MIN_PYTHON = (3, 6)
+MIN_PYTHON = (3, 9)
 if sys.version_info < MIN_PYTHON:
     sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
 
 HEADER_LENGTH = 4
-
-# GOOGLE_STORAGE = 'gcp'
-# DUMMY = 'dummy'
-
-# DRIVERS = {
-#   DUMMY:
-#   ('cloud_storage', 'CloudStorage'),
-#   GOOGLE_STORAGE:
-#   ('gcp_storage', 'GCPCloudStorage')
-#   }
 
 # TODO
 # Add check for number of fragments
@@ -54,15 +45,19 @@ HEADER_LENGTH = 4
 # create headers for files
 # split into multiple files plus 1 parity
 # output files
-def main():
-    file_name = 'test1.txt'
+
+def SMCS():
+    #file_name = 'caribbean.tif'
+    file_name = 'setSizeFiles/1MB'
+    #file_name = 'test1.txt'
     config_name = 'config_private.json'
     frag_file_path = 'frags/'
+    start_time = 0
 
-    # REMOVE THIS IF YOU WANT TO KEEP FRAGS BETWEEN RUNS
-    if os.path.isdir("frags"):
-        for f in os.listdir("frags"):
-            os.remove(os.path.join("frags", f))
+    # Deletes the frags from the previous run
+    deleteLocalFragments(file_name, frag_file_path)
+
+    start_time = time.time()
 
     # here user will input password
     password = "password"
@@ -81,10 +76,15 @@ def main():
     #cipher_text = plain_text
 
     # split into fragments
+    print('Creating fragments...')
     fragments = splitIntoFragments(cipher_text, 6)
 
     # store frags to cloud here
     fragNames = saveFragmentsToDisk(fragments, file_name, frag_file_path)
+
+    print('Time to create fragments: ' + str(math.trunc((time.time() - start_time) * 1000)) + ' ms')
+
+    print('\nPushing fragments to clouds...')
 
     # load clouds from config file
     csps = getCloudsFromConfig(config_name)
@@ -92,13 +92,25 @@ def main():
     # remove conatiners from previous runs
     cleanupClouds(csps, True)
 
+    start_time = time.time()
+
     #pushFragmentsToCloud(fragments, csps, file_name)
     pushFragmentsToCloudFromFiles(fragNames, csps, file_name, frag_file_path)
 
+    print('Time to push fragments to clouds: ' + str(math.trunc((time.time() - start_time) * 1000)) + ' ms')
+    start_time = time.time()
+
     # retrieve from cloud here
+    print('\nRetreiving fragments from clouds...')
     array = getFragmentsFromCloud(file_name, csps)
     for i in range(len(array)):
         array[i] = bytearray(array[i])
+
+    # print time to retrieve fragments
+    print('Time to retrieve fragments: ' + str(math.trunc((time.time() - start_time) * 1000)) + ' ms')
+    start_time = time.time()
+
+    print('\nReassembling fragments...')
 
     # order fragments the right way
     fragsOrdered = orderFragmentsByHeader(array)
@@ -115,13 +127,13 @@ def main():
     # decrypt ciphertext with key
     plain_text_bytearray = decryptByteArray(cipher_text_bytearray, key1)
 
-    print(plain_text_bytearray)
+    #print('\nReconstructed input:')
+    # print(plain_text_bytearray)
 
     with open('test1.output', 'wb') as f2:
         f2.write(plain_text_bytearray)
 
-    # removes the containers from the cloud
-    # cleanupClouds(csps)
+    print('Time to reassemble fragments: ' + str(math.trunc((time.time() - start_time) * 1000)) + ' ms')
 
 
 def readBytesFromFile(file) -> bytearray:
@@ -138,9 +150,6 @@ def stitchFragments(b: List[bytearray]) -> bytearray:
     for fragment in b:
         del fragment[0:HEADER_LENGTH]
         total_length += len(fragment)
-
-    for fragment in b:
-        print(fragment)
 
     i = 0
     parity_counter = 0
@@ -236,14 +245,15 @@ def addHeadersToFragments(fragments: List[bytearray], num_fragments: int,
 
 
 def deleteLocalFragments(file_name, frag_path):
-    pass
+    # TODO only delete the files with the correct name
+    if os.path.isdir(frag_path):
+        for f in os.listdir(frag_path):
+            os.remove(os.path.join(frag_path, f))
 
 
+# Sorts the fragments based on their position stored in their header
 def orderFragmentsByHeader(fragments: List[bytearray]) -> List[bytearray]:
-
     fragmentsOrdered = [None] * len(fragments)
-    print("LENGTH FRAGMENTS:", len(fragments))
-    print("LENGTH FRAGMENTSORDERED:", len(fragmentsOrdered))
     # TODO add check to see if num of frags we have matches the num in headers
 
     for frag in fragments:
@@ -298,6 +308,7 @@ def splitIntoFragments(b: bytearray, num_fragments: int) -> List[bytearray]:
       create_parity {bool} -- [description] (default: {True})
     """
     print("length of b:", len(b))
+    print("number of fragments:", num_fragments)
     total_file_length_bytes = len(b)
     print("len(b) mod num_fragments:", (len(b) % num_fragments))
     outputFragments = []
@@ -407,7 +418,7 @@ def saveFragmentsToDisk(fragments: List[bytearray], file_name, file_path='') -> 
     # returns a list of filenames for the fragments saved to disk
     fragNameList = []
     for frag in fragments:
-        frag_name = name = file_name + \
+        frag_name = name = os.path.basename(file_name) + \
             ''.join(random.choices(string.ascii_letters + string.digits, k=16))
         frag_path = file_path + frag_name
         fragNameList.append(frag_name)
@@ -417,13 +428,15 @@ def saveFragmentsToDisk(fragments: List[bytearray], file_name, file_path='') -> 
 
 
 def pushFragmentsToCloudFromFiles(fragNameList: List[str], clouds: List[cloud_storage.CloudStorage], file_name: str, frag_path=''):
+    for cloud in clouds:
+        cloud.establishContainer()
+
     cloud_num = 0
-    print("Uploading files to cloud...")
     for frag_name in fragNameList:
-        clouds[cloud_num].setMetaData(file_name=file_name)
+        clouds[cloud_num].setMetaData(file_name=os.path.basename(file_name))
         file_path = frag_path + frag_name
         clouds[cloud_num].uploadObjectFromFile(file_path, frag_name)
-        print("File: " + frag_name + " uplaoded to " + clouds[cloud_num].cloud)
+        print("File: " + frag_name + " uploaded to " + clouds[cloud_num].cloud)
         cloud_num += 1
         if cloud_num >= len(clouds):
             cloud_num = 0
@@ -454,7 +467,7 @@ def getFragmentsFromCloud(file_name: str, clouds: List[cloud_storage.CloudStorag
     fragments = []
 
     for cloud in clouds:
-        fragments = fragments + cloud.getFilesWithPrefix(file_name)
+        fragments = fragments + cloud.getFilesWithPrefix(os.path.basename(file_name))
 
     return fragments
 
@@ -462,6 +475,19 @@ def getFragmentsFromCloud(file_name: str, clouds: List[cloud_storage.CloudStorag
 def cleanupClouds(clouds: List[cloud_storage.CloudStorage], removeExistingContainers: bool):
     for cloud in clouds:
         cloud.cleanUp(removeExistingContainers)
+
+
+def main():
+    import cProfile
+    import pstats
+
+    with cProfile.Profile() as pr:
+        SMCS()
+
+    stats = pstats.Stats(pr)
+    stats.sort_stats(pstats.SortKey.TIME)
+    # stats.print_stats()
+    stats.dump_stats(filename='profilingStats.prof')
 
 
 if __name__ == "__main__":

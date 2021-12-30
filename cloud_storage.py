@@ -10,7 +10,7 @@ from libcloud.storage.drivers import google_storage
 from libcloud.storage.drivers.google_storage import GoogleStorageDriver
 # from cloud_storage import CloudStorage
 from libcloud.storage.base import Object
-from typing import List, Set, Dict, Tuple, Optional
+from typing import Container, List, Set, Dict, Tuple, Optional
 
 
 class CloudStorage():
@@ -49,7 +49,6 @@ class CloudStorage():
         self.containers = self.listContainersWithPrefix('smcs-')
         if not self.containers:
             self.containers.append(self.createContainer())
-        print(self.containers)
 
         self.files = []
         self.metaData = {'meta_data': {}}
@@ -84,14 +83,22 @@ class CloudStorage():
                 containersWithPrefix.append(container)
         return containersWithPrefix
 
+    def establishContainer(self):
+        if self.container == None:
+            if not self.containers:
+                self.containers.append(self.createContainer())
+            self.container = self.containers[0]
+
     def createContainer(self, container_name=None):
         if container_name:
-            return self.driver.create_container(container_name)
+            container = self.driver.create_container(container_name)
         else:
             name = 'smcs-' + \
                 ''.join(random.choices(
                     string.ascii_lowercase + string.digits, k=16))
-            return self.driver.create_container(name)
+            container = self.driver.create_container(name)
+        print(container)
+        return container
 
     def cleanUp(self, removeExistingContainers=False):
         if removeExistingContainers:
@@ -113,11 +120,8 @@ class CloudStorage():
     def listObjectsWithPrefix(self, prefix, container=None):
 
         if not container:
-            print("NOT container")
             container = self.containers[0]
 
-        print(type(container))
-        print(container)
         objList = self.driver.list_container_objects(container)
         objsWithPrefix = []
         for obj in objList:
@@ -126,11 +130,6 @@ class CloudStorage():
         return objsWithPrefix
 
     def uploadObjectFromFile(self, file_path, fragment_name):
-
-        if self.container == None:
-            if not self.containers:
-                self.containers.append(self.createContainer())
-            self.container = self.containers[0]
 
         self.driver.upload_object(
             file_path, self.container, fragment_name, extra=self.metaData)
