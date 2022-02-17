@@ -2,6 +2,7 @@ import json
 import os
 import string
 import random
+import asyncio
 
 from libcloud.storage.types import Provider
 from libcloud.storage import providers
@@ -42,8 +43,7 @@ class CloudStorage():
         else:
             print("cloud", cloud, "not supported")
 
-        self.driver = self.cls(
-            key=self.key, secret=self.secret, project='focal-healer-271320')
+        self.driver = self.cls(key=self.key, secret=self.secret, project='focal-healer-271320')
         self.container = None
 
         self.containers = self.listContainersWithPrefix('smcs-')
@@ -102,6 +102,9 @@ class CloudStorage():
 
     def cleanUp(self, removeExistingContainers=False):
         if removeExistingContainers:
+            # if there are no containers, retrn
+            if not self.containers:
+                return
             for container in self.listContainersWithPrefix('smcs-'):
                 self.deleteContainer(container)
             self.containers = []
@@ -131,8 +134,7 @@ class CloudStorage():
 
     def uploadObjectFromFile(self, file_path, fragment_name):
 
-        self.driver.upload_object(
-            file_path, self.container, fragment_name, extra=self.metaData)
+        self.driver.upload_object(file_path, self.container, fragment_name, extra=self.metaData)
 
     def uploadObject(self, fragment: bytearray, fragment_name: str, container=None):
 
@@ -231,6 +233,16 @@ class CloudStorage():
         except ValueError:
             return False
         return True
+
+    def threadDownload(self, obj, container=None):
+        asyncDriver = self.cls(key=self.key, secret=self.secret, project='focal-healer-271320')
+
+        if not container:
+            container = self.containers[0]
+
+        gen = asyncDriver.download_object_as_stream(obj)
+
+        return next(gen)
 
 
 # cls = get_driver(Provider.GOOGLE_STORAGE)

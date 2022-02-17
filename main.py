@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import math
-import array
 import sys
 import base64
 import os
@@ -8,6 +7,8 @@ import json
 import random
 import string
 import time
+
+import multiprocessing as mp
 
 from typing import List, Set, Dict, Tuple, Optional
 from cryptography.fernet import Fernet
@@ -47,8 +48,11 @@ HEADER_LENGTH = 4
 # output files
 
 def SMCS():
-    #file_name = 'caribbean.tif'
-    file_name = 'setSizeFiles/1MB'
+    # file for recording runtimes
+    file = open("runtime.txt", "w")
+
+    file_name = 'caribbean.tif'
+    #file_name = 'setSizeFiles/2MB'
     #file_name = 'test1.txt'
     config_name = 'config_private.json'
     frag_file_path = 'frags/'
@@ -83,6 +87,7 @@ def SMCS():
     fragNames = saveFragmentsToDisk(fragments, file_name, frag_file_path)
 
     print('Time to create fragments: ' + str(math.trunc((time.time() - start_time) * 1000)) + ' ms')
+    file.write(str(math.trunc((time.time() - start_time) * 1000)) + ', ')
 
     print('\nPushing fragments to clouds...')
 
@@ -98,6 +103,7 @@ def SMCS():
     pushFragmentsToCloudFromFiles(fragNames, csps, file_name, frag_file_path)
 
     print('Time to push fragments to clouds: ' + str(math.trunc((time.time() - start_time) * 1000)) + ' ms')
+    file.write(str(math.trunc((time.time() - start_time) * 1000)) + ', ')
     start_time = time.time()
 
     # retrieve from cloud here
@@ -108,6 +114,7 @@ def SMCS():
 
     # print time to retrieve fragments
     print('Time to retrieve fragments: ' + str(math.trunc((time.time() - start_time) * 1000)) + ' ms')
+    file.write(str(math.trunc((time.time() - start_time) * 1000)) + ', ')
     start_time = time.time()
 
     print('\nReassembling fragments...')
@@ -134,6 +141,8 @@ def SMCS():
         f2.write(plain_text_bytearray)
 
     print('Time to reassemble fragments: ' + str(math.trunc((time.time() - start_time) * 1000)) + ' ms')
+    file.write(str(math.trunc((time.time() - start_time) * 1000)) + '\n')
+    file.close()
 
 
 def readBytesFromFile(file) -> bytearray:
@@ -464,10 +473,27 @@ def pushFragmentsToCloud(fragments: List[bytearray], clouds: List[cloud_storage.
 def getFragmentsFromCloud(file_name: str, clouds: List[cloud_storage.CloudStorage]):
     # give prefix
     # download all with prefix
+
+    pool = mp.Pool(mp.cpu_count())
+    result_opjects = []
     fragments = []
 
     for cloud in clouds:
-        fragments = fragments + cloud.getFilesWithPrefix(os.path.basename(file_name))
+        objectsToDownload = cloud.listObjectsWithPrefix(os.path.basename(file_name))
+
+        for obj in objectsToDownload:
+            result_opjects.append(pool.apply_async(cloud.threadDownload, (obj,)))
+
+    fragments = [p.get() for p in result_opjects]
+
+    return fragments
+
+
+def getFragmentsFromCloudOld(file_name: str, clouds: List[cloud_storage.CloudStorage]):
+    fragments = []
+
+    for cloud in clouds:
+        fragments.extend(cloud.getFilesWithPrefix(os.path.basename(file_name)))
 
     return fragments
 
@@ -478,16 +504,21 @@ def cleanupClouds(clouds: List[cloud_storage.CloudStorage], removeExistingContai
 
 
 def main():
-    import cProfile
-    import pstats
+    DEBUG = True
 
-    with cProfile.Profile() as pr:
+    if DEBUG:
+        import cProfile
+        import pstats
+
+        with cProfile.Profile() as pr:
+            SMCS()
+
+        stats = pstats.Stats(pr)
+        stats.sort_stats(pstats.SortKey.TIME)
+        # stats.print_stats()
+        stats.dump_stats(filename='profilingStats.prof')
+    else:
         SMCS()
-
-    stats = pstats.Stats(pr)
-    stats.sort_stats(pstats.SortKey.TIME)
-    # stats.print_stats()
-    stats.dump_stats(filename='profilingStats.prof')
 
 
 if __name__ == "__main__":
