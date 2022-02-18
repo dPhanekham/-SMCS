@@ -1,17 +1,11 @@
 import json
-import os
 import string
 import random
-import asyncio
 
-from libcloud.storage.types import Provider
 from libcloud.storage import providers
 from libcloud.storage.providers import get_driver
-from libcloud.storage.drivers import google_storage
-from libcloud.storage.drivers.google_storage import GoogleStorageDriver
 # from cloud_storage import CloudStorage
-from libcloud.storage.base import Object
-from typing import Container, List, Set, Dict, Tuple, Optional
+from typing import List
 
 
 class CloudStorage():
@@ -38,7 +32,6 @@ class CloudStorage():
         else:
             self.secret = cloud_info[2]
 
-        # TODO check if provider is in providers.DRIVERS
         self.cls = None
         if self.cloud in providers.DRIVERS:
             self.cls = get_driver(self.cloud)
@@ -95,9 +88,8 @@ class CloudStorage():
         if container_name:
             container = self.driver.create_container(container_name)
         else:
-            name = 'smcs-' + \
-                ''.join(random.choices(
-                    string.ascii_lowercase + string.digits, k=16))
+            name = 'smcs-' + ''.join(random.choices(
+                string.ascii_lowercase + string.digits, k=16))
             container = self.driver.create_container(name)
         print(container)
         return container
@@ -137,6 +129,11 @@ class CloudStorage():
     def uploadObjectFromFile(self, file_path, fragment_name):
 
         self.driver.upload_object(file_path, self.container, fragment_name, extra=self.metaData)
+
+    def threadUploadObjectFromFile(self, file_path, fragment_name):
+
+        asyncDriver = self.cls(*self.cloud_info[1:])
+        asyncDriver.upload_object(file_path, self.container, fragment_name, extra=self.metaData)
 
     def uploadObject(self, fragment: bytearray, fragment_name: str, container=None):
 

@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import math
+from re import S
 import sys
 import base64
 import os
@@ -10,12 +11,11 @@ import time
 
 import multiprocessing as mp
 
-from typing import List, Set, Dict, Tuple, Optional
+from typing import List
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from libcloud.storage.types import Provider
 from libcloud.storage import providers
 
 import cloud_storage
@@ -51,9 +51,9 @@ def SMCS():
     # file for recording runtimes
     file = open("runtime.txt", "w")
 
-    #file_name = 'caribbean.tif'
+    file_name = 'caribbean.tif'
     #file_name = 'setSizeFiles/1MB'
-    file_name = 'test1.txt'
+    #file_name = 'test1.txt'
     config_name = 'config_private.json'
     frag_file_path = 'frags/'
     start_time = 0
@@ -99,8 +99,8 @@ def SMCS():
 
     start_time = time.time()
 
-    #pushFragmentsToCloud(fragments, csps, file_name)
-    pushFragmentsToCloudFromFiles(fragNames, csps, file_name, frag_file_path)
+    #pushFragmentsToCloudFromFiles(fragNames, csps, file_name, frag_file_path)
+    pushFragmentsToCloudFromFilesNew(fragNames, csps, file_name, frag_file_path)
 
     print('Time to push fragments to clouds: ' + str(math.trunc((time.time() - start_time) * 1000)) + ' ms')
     file.write(str(math.trunc((time.time() - start_time) * 1000)) + ', ')
@@ -316,10 +316,13 @@ def splitIntoFragments(b: bytearray, num_fragments: int) -> List[bytearray]:
     Keyword Arguments:
       create_parity {bool} -- [description] (default: {True})
     """
-    print("length of b:", len(b))
-    print("number of fragments:", num_fragments)
+
     total_file_length_bytes = len(b)
-    print("len(b) mod num_fragments:", (len(b) % num_fragments))
+
+    print("length of b:", total_file_length_bytes)
+    print("number of fragments:", num_fragments)
+    print("len(b) mod num_fragments:", (total_file_length_bytes % num_fragments))
+
     outputFragments = []
     parity = bytearray()
 
@@ -338,7 +341,7 @@ def splitIntoFragments(b: bytearray, num_fragments: int) -> List[bytearray]:
     #parity = bytearray(num_fragments)
     parity_bit_position = num_fragments - 1
 
-    while i < len(b):
+    while i < total_file_length_bytes:
 
         # insert parity bit
         if parity_counter == num_fragments - 1:
@@ -434,8 +437,7 @@ def saveFragmentsToDisk(fragments: List[bytearray], file_name, file_path='') -> 
     # returns a list of filenames for the fragments saved to disk
     fragNameList = []
     for frag in fragments:
-        frag_name = name = os.path.basename(file_name) + \
-            ''.join(random.choices(string.ascii_letters + string.digits, k=16))
+        frag_name = name = os.path.basename(file_name) + ''.join(random.choices(string.ascii_letters + string.digits, k=16))
         frag_path = file_path + frag_name
         fragNameList.append(frag_name)
         with open(frag_path, 'wb') as f:
@@ -453,9 +455,33 @@ def pushFragmentsToCloudFromFiles(fragNameList: List[str], clouds: List[cloud_st
         file_path = frag_path + frag_name
         clouds[cloud_num].uploadObjectFromFile(file_path, frag_name)
         print("File: " + frag_name + " uploaded to " + clouds[cloud_num].cloud)
+
         cloud_num += 1
         if cloud_num >= len(clouds):
             cloud_num = 0
+
+
+def pushFragmentsToCloudFromFilesNew(fragNameList: List[str], clouds: List[cloud_storage.CloudStorage], file_name: str, frag_path=''):
+    for cloud in clouds:
+        cloud.establishContainer()
+
+    upload_pool = mp.Pool(mp.cpu_count())
+
+    cloud_num = 0
+    for frag_name in fragNameList:
+        clouds[cloud_num].setMetaData(file_name=os.path.basename(file_name))
+        file_path = frag_path + frag_name
+
+        upload_pool.apply_async(clouds[cloud_num].threadUploadObjectFromFile, args=(file_path, frag_name))
+
+        print("File: " + frag_name + " uploading to " + clouds[cloud_num].cloud)
+
+        cloud_num += 1
+        if cloud_num >= len(clouds):
+            cloud_num = 0
+
+    upload_pool.close()
+    upload_pool.join()
 
 
 # does not currently work for azure because libcloud is stupid
@@ -465,8 +491,7 @@ def pushFragmentsToCloud(fragments: List[bytearray], clouds: List[cloud_storage.
     print("Uploading files to cloud...")
     print(file_name)
     for frag in fragments:
-        frag_name = name = file_name + \
-            ''.join(random.choices(string.ascii_letters + string.digits, k=16))
+        frag_name = name = file_name + ''.join(random.choices(string.ascii_letters + string.digits, k=16))
 
         print("File: " + frag_name + " uplaoded to " + clouds[cloud_num].cloud)
         clouds[cloud_num].setMetaData(file_name=file_name)
@@ -476,10 +501,9 @@ def pushFragmentsToCloud(fragments: List[bytearray], clouds: List[cloud_storage.
         if cloud_num >= len(clouds):
             cloud_num = 0
 
-# multhi-threaded version of getFragmentsFromCloudOld
-
 
 def getFragmentsFromCloud(file_name: str, clouds: List[cloud_storage.CloudStorage]):
+    # multhi-threaded version of getFragmentsFromCloudOld
     pool = mp.Pool(mp.cpu_count())
     result_opjects = []
     fragments = []
@@ -491,6 +515,8 @@ def getFragmentsFromCloud(file_name: str, clouds: List[cloud_storage.CloudStorag
             result_opjects.append(pool.apply_async(cloud.threadDownload, (obj,)))
 
     fragments = [p.get() for p in result_opjects]
+
+    pool.close()
 
     return fragments
 
