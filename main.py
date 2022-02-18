@@ -51,9 +51,9 @@ def SMCS():
     # file for recording runtimes
     file = open("runtime.txt", "w")
 
-    file_name = 'caribbean.tif'
-    #file_name = 'setSizeFiles/2MB'
-    #file_name = 'test1.txt'
+    #file_name = 'caribbean.tif'
+    #file_name = 'setSizeFiles/1MB'
+    file_name = 'test1.txt'
     config_name = 'config_private.json'
     frag_file_path = 'frags/'
     start_time = 0
@@ -405,20 +405,27 @@ def readConfig(config_file: str):
 def getCloudsFromConfig(config_file: str) -> List[cloud_storage.CloudStorage]:
     config = readConfig(config_file)
 
-    cloud_storage_providers = []
+    clouds = []
 
     for cloud in config['clouds']:
-        if cloud['cloud'].lower() in providers.DRIVERS:
-            c = cloud_storage.CloudStorage(
-                cloud['cloud'], cloud['key'], cloud['secret'])
+        clouds.append(list(cloud.values()))
+
+    cloud_storage_providers = []
+
+    for cloud in clouds:
+        if cloud[0].lower() in providers.DRIVERS:
+            print("Creating cloud storage provider for", cloud[0])
+            # unpacks the could config into a list of args
+            # needed becasue some cloud providers require different args than others
+            c = cloud_storage.CloudStorage(cloud)
             try:
                 c.driver.list_containers()
             except:
-                print("ERROR: Failed to connect to cloud:", cloud['cloud'])
+                print("ERROR: Failed to connect to cloud:", cloud[0])
                 continue
             cloud_storage_providers.append(c)
         else:
-            print("ERROR: cloud provider", cloud['cloud'].lower(), "not found")
+            print("ERROR: cloud provider", cloud[0].lower(), "not found")
 
     return cloud_storage_providers
 
@@ -469,11 +476,10 @@ def pushFragmentsToCloud(fragments: List[bytearray], clouds: List[cloud_storage.
         if cloud_num >= len(clouds):
             cloud_num = 0
 
+# multhi-threaded version of getFragmentsFromCloudOld
+
 
 def getFragmentsFromCloud(file_name: str, clouds: List[cloud_storage.CloudStorage]):
-    # give prefix
-    # download all with prefix
-
     pool = mp.Pool(mp.cpu_count())
     result_opjects = []
     fragments = []

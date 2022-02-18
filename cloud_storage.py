@@ -16,34 +16,36 @@ from typing import Container, List, Set, Dict, Tuple, Optional
 
 class CloudStorage():
 
-    def __init__(self, cloud, key, secret, owner=None, date_str=None):
+    def __init__(self, cloud_info, owner=None, date_str=None):
         """Initializes a GCPCloudStorage object
 
         https://libcloud.readthedocs.io/en/latest/storage/drivers/google_storage.html
 
         Args:
-          key: key
-          secret: secret key
+          cloud_info: [cloud, key, secret, cloud specific arguments]
           owner: owner metadata (default: {None})
           date_str: date created metadata (default: {None})
         """
-        self.cloud = cloud
-        self.key = key
+
+        # this is stored so it can be used to initialize the thread specific driver
+        self.cloud_info = cloud_info
+        self.cloud = cloud_info[0]
+        self.key = cloud_info[1]
         self.secret = None
         # self.container_name = 'smcs-123'
-        if self.isJson(secret):
-            self.secret = secret['private_key']
+        if self.isJson(cloud_info[2]):
+            self.secret = cloud_info[2]['private_key']
         else:
-            self.secret = secret
+            self.secret = cloud_info[2]
 
         # TODO check if provider is in providers.DRIVERS
         self.cls = None
         if self.cloud in providers.DRIVERS:
             self.cls = get_driver(self.cloud)
         else:
-            print("cloud", cloud, "not supported")
+            print("cloud", cloud_info[0], "not supported")
 
-        self.driver = self.cls(key=self.key, secret=self.secret, project='focal-healer-271320')
+        self.driver = self.cls(*cloud_info[1:])
         self.container = None
 
         self.containers = self.listContainersWithPrefix('smcs-')
@@ -235,7 +237,7 @@ class CloudStorage():
         return True
 
     def threadDownload(self, obj, container=None):
-        asyncDriver = self.cls(key=self.key, secret=self.secret, project='focal-healer-271320')
+        asyncDriver = self.cls(*self.cloud_info[1:])
 
         if not container:
             container = self.containers[0]
