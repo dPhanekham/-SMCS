@@ -2,3 +2,13 @@ SMCS.sublime-workspace
 SMCS.sublime-project
 result.*
 __pycache__/*
+frags/
+*.json
+*.Identifier
+*.output
+/SMCS.pyproj
+/.vs
+/SMCS.sln
+/SMCS.pyperf
+/setSizeFiles
+

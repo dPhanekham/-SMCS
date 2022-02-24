@@ -1,22 +1,10 @@
-{	
-	"GCP": {
-		//GCP key is the service account email address
-		"key" : "service-account-name@project.iam.gserviceaccount.com",
-		//GCP secret is the private_key file for that service address
-		"secret" : "gcp_key.json",
-	},
-
-	"AWS": {
-		//AWS API KEY
-		"key" : "key_here"
-		//AWS API SECRET KEY
-	},
-
-	"Azure": {
-		//Azure Storage Account name
-		"key" : "key",
-		//Access key
-		"secret"
-
-	}
+{
+    "clouds": [
+        {
+            "cloud": "GOOGLE_STORAGE",
+            "key": "name@project-name.iam.gserviceaccount.com",
+            "secret": "secret.json",
+            "project": "project-name"
+        }
+    ]
 }
