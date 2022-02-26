@@ -50,7 +50,8 @@ HEADER_LENGTH = 4
 
 def SMCS():
 
-    block_length = 4
+    block_length = 256
+    number_of_fragments = 6
 
     # file for recording runtimes
     file = open("runtime.txt", "w")
@@ -78,26 +79,36 @@ def SMCS():
     plain_text = None
     with open(file_name, 'rb') as f:
         plain_text = readBytesFromFile(f)
-
+    # print(plain_text)
     # encrypt plain text to cypher text
     cipher_text = encryptByteArray(plain_text, key, salt)
     #cipher_text = plain_text
     # print(f'CIPHERTEXT: {cipher_text}')
     # split into fragments
 
-    distributed_parity = False
+    distributed_parity = True
 
     print('Creating fragments...')
-    fragments = splitIntoFragments(cipher_text, block_length, 6, distributed_parity=distributed_parity)
+    fragments = splitIntoFragments(cipher_text,
+                                   block_length,
+                                   number_of_fragments,
+                                   distributed_parity=distributed_parity)
     
-    # print("\nFRAGMENTS")
-    # for fragment in fragments:
-    #     print(fragment[4:])
+    print("\nFRAGMENTS")
+    for fragment in fragments:
+        print(fragment[4:])
+
+    print("\nFRAGMENTS LENGTHS")
+    for fragment in fragments:
+        print(len(fragment[4:]))
+
+    
     # store frags to cloud here
     fragNames = saveFragmentsToDisk(fragments, file_name, frag_file_path)
 
     print('Time to create fragments: ' + str(math.trunc((time.time() - start_time) * 1000)) + ' ms')
     file.write(str(math.trunc((time.time() - start_time) * 1000)) + ', ')
+
 
     #print('\nPushing fragments to clouds...')
 
@@ -138,10 +149,11 @@ def SMCS():
     fragsOrdered = orderFragmentsByHeader(array)
 
     # TODO check header for parity distribution
-    distributed_parity = False
 
     # stitch fragments back together
-    cipher_text_bytearray = stitchFragments(fragsOrdered, block_length, distributed_parity=distributed_parity)
+    cipher_text_bytearray = stitchFragments(fragsOrdered,
+                                            block_length,
+                                            distributed_parity=distributed_parity)
 
     # get salt from file
     salt1 = getAndRemoveSaltFromFile(cipher_text_bytearray)
@@ -152,7 +164,7 @@ def SMCS():
     # decrypt ciphertext with key
     plain_text_bytearray = decryptByteArray(cipher_text_bytearray, key1)
 
-    #print('\nReconstructed input:')
+    # print('\nReconstructed input:')
     # print(plain_text_bytearray)
 
     with open('output.txt', 'wb') as f2:
@@ -165,6 +177,37 @@ def SMCS():
 
 def readBytesFromFile(file) -> bytearray:
     b = bytearray(file.read())
+    return b
+
+def pad(b: bytearray,
+        block_length: int) -> bytearray:
+    """Add padding for fragmentation and parity
+    Args:
+        b (bytearray): Description
+        block_length (int): Description
+    """
+    size = len(b)
+    size_difference = size%block_length
+    num_to_insert = block_length - size_difference
+    for i in range(0, num_to_insert):
+        b.append(num_to_insert)
+    return b
+
+
+def unpad(b: bytearray,
+          block_length: int) -> bytearray:
+    """remove padding after defrag and remove parity
+    Args:
+        b (bytearray): Description
+        block_length (int): Description
+    """
+    size = len(b)
+    padding = b[size-1]
+    #check padding
+    for i in range(0,padding):
+        if b[-1-i] != padding:
+            raise RuntimeError(f'Padding mismatch. {padding} != {b[-1-i]}')
+    del b[-padding:]
     return b
 
 
@@ -189,7 +232,35 @@ def stitchFragments(b: List[bytearray],
     #     print(fragment)
 
     if distributed_parity:
-        pass
+        num_data_fragments = num_fragments - 1
+
+        # initially set parity fragment to the last fragment
+        parity_fragment = num_fragments - 1
+
+        start_byte = 0
+        start = start_byte
+        frag_position = 0
+
+        # This will go through rounds putting data into fragments with distributed parity
+        # Kinda like RAID V
+        while start_byte < total_length:
+            start = start_byte
+            i = 0
+            while i < num_fragments:
+                if i == parity_fragment:
+                    i += 1
+                    continue
+                if start >= total_length:
+                    break
+                # parity = bitwiseXor(parity, b[start:start+block_length])
+                stitched_bytearray.extend(b[i][start:start+block_length])
+                i += 1
+
+            # outputFragments[parity_fragment].extend(parity)
+            parity_fragment += 1
+            if parity_fragment >= num_fragments:
+                parity_fragment = 0
+            start_byte = start_byte + block_length
     else:
 
         # TODO, explore list(zip(*b))
@@ -224,6 +295,9 @@ def stitchFragments(b: List[bytearray],
 
             i += 1
 
+    # print('STITCHED FRAGMENTS (with padding)')
+    # print(stitched_bytearray)
+    stitched_bytearray = unpad(stitched_bytearray, block_length)
     # print('STITCHED FRAGMENTS')
     # print(stitched_bytearray)
     return stitched_bytearray
@@ -273,8 +347,11 @@ def decryptByteArray(cipher_text: bytearray, key: bytes) -> bytearray:
 
 
 # TODO maybe do this when the fragments are created
-def addHeadersToFragments(fragments: List[bytearray], num_fragments: int,
-                          total_file_length_bytes: int, distributed_parity: bool):
+def addHeadersToFragments(fragments: List[bytearray],
+                          num_fragments: int,
+                          total_file_length_bytes: int, 
+                          block_length: int,
+                          distributed_parity: bool):
     """Add headers to fragments.
 
     Add headers to all fragments.
@@ -282,18 +359,18 @@ def addHeadersToFragments(fragments: List[bytearray], num_fragments: int,
     currently header includes
       -total fragments
       -position
-      -total_file_length % num_fragments
+      -block size (0,256)
       -placeholder
 
     Args:
       fragments: List of bytearrays
     """
-    # TODO add check for num frags size
-    last_block = total_file_length_bytes % num_fragments
+    # # TODO add check for num frags size
+    # last_block = total_file_length_bytes % num_fragments
     for i in range(num_fragments):
         fragments[i].append(num_fragments)
         fragments[i].append(i)
-        fragments[i].append(last_block)
+        fragments[i].append(block_length)
         fragments[i].append(distributed_parity)
 
 # def removeHeadersFromFragments(fragments: List[bytearray]):
@@ -349,31 +426,58 @@ def calculateMissingFragment(arrays: List[bytearray], p: List[bool]) -> bytearra
     # with open('result.jpg', 'w') as f2:
     #   f2.write(result.decode('utf8'))
 
-def bitwise_xor(b1: bytearray, b2: bytearray) -> bytearray:
+def bitwiseXor(b1: bytearray, b2: bytearray) -> bytearray:
     result = bytearray()
     for b1, b2 in zip(b1, b2):
         result.append(b1 ^ b2)
     return result
 
-def bitwise_xor_array(ba: List[bytearray], 
+def bitwiseXorArray(ba: List[bytearray], 
                       indices: List[int],
                       start: int,
                       end: int) -> bytearray:
     """Bitwise XOR across multiple bytearrays in a list
-
     Args:
         ba (List[bytearray]): List of bytearrays to XOR
         indices (List[int]): List of indices in ba to XOR
         start (int): Start index of XOR operation in each bytearray
         end (int): End index of XOR operation in each bytearray
-    
     Returns:
         bytearray: Description
     """
-    result = bytearray()
-    for b1, b2 in zip(b1, b2):
-        result.append(b1 ^ b2)
+    result = ba[indices[0]][start:end]
+    for i in indices[1:]:
+        tmp_result = bytearray()
+        for b1, b2 in zip(result, ba[i][start:end]):
+            tmp_result.append(b1 ^ b2)
+        result = tmp_result
     return result
+
+def calculateParityBlock(b: bytearray,
+                         block_length: int,
+                         num_fragments: int,
+                         parity_block: int,
+                         start_byte: int,
+                         total_bytes: int) -> bytearray:
+    """Calculates the parity for a block/stripe
+    
+    if b = 'abcdefghijklmnop', block_length=4, num_fragments=5
+    
+    split b into 4 block of length 4 (5th is parity block)
+    XOR 4 blocks to get 5th parity block
+    
+    parity = (abcd) ^ (efgh) ^ (ijkl) ^ (mnop)
+    
+    Args:
+        b (bytearray): Description
+        block_length (int): Description
+        num_fragments (int): Description
+        parity_block (int): Description
+        start_byte (int): Description
+        total_bytes (int): Description
+    """
+
+
 
 def splitIntoFragments(b: bytearray, 
                        block_length: int, 
@@ -391,12 +495,23 @@ def splitIntoFragments(b: bytearray,
       create_parity {bool} -- [description] (default: {True})
     """
 
+    
+    print("length of b (before padding):", len(b))
+    print("len(b) mod block_length (before padding):", (len(b) % block_length))
+    # add padding so b is a multiple of the block_length in bytes
+    b = pad(b, block_length)
+
+    # print("ciphertext after padding")
+    # print(b)
+
     total_file_length_bytes = len(b)
 
     print("length of b:", total_file_length_bytes)
     print(f'block length: {block_length}')
     print("number of fragments:", num_fragments)
-    print("len(b) mod num_fragments:", (total_file_length_bytes % num_fragments))
+    print("len(b) mod block_length:", (total_file_length_bytes % block_length))
+
+    # print(b)
 
     outputFragments = []
     parity = bytearray()
@@ -404,19 +519,62 @@ def splitIntoFragments(b: bytearray,
     for i in range(num_fragments):
         outputFragments.append(bytearray())
 
-    
-
     if distributed_parity:
+        # TODO
+        # could do something like this 
+        # split_text = list(zip(*[iter(cipher_text)]*4))
+        # frag = list(itertools.islice(split_text,0,len(split_text),4))
+
         addHeadersToFragments(outputFragments,
-                          num_fragments,
-                          total_file_length_bytes,
-                          True)
+                              num_fragments,
+                              total_file_length_bytes,
+                              block_length,
+                              True)
+
+        num_data_fragments = num_fragments - 1
+
+        # initially set parity fragment to the last fragment
+        parity_fragment = num_fragments - 1
+
+        start_byte = 0
+        start = start_byte
+        frag_position = 0
+
+        # This will go through rounds putting data into fragments with distributed parity
+        # Kinda like RAID V
+        while start_byte < total_file_length_bytes:
+            start = start_byte
+            i = 0
+            while i < num_fragments:
+                if i == 0:
+                    parity = bytearray([0]*block_length)
+                if i == parity_fragment:
+                    i += 1
+                    continue
+                if start >= total_file_length_bytes:
+                    break
+                # elif start + block_length >= total_file_length_bytes:
+                #     break
+                parity = bitwiseXor(parity, b[start:start+block_length])
+                outputFragments[i].extend(b[start:start+block_length])
+                start = start + block_length
+                i += 1
+
+            outputFragments[parity_fragment].extend(parity)
+            parity_fragment += 1
+            if parity_fragment >= num_fragments:
+                parity_fragment = 0
+            start_byte = start_byte + (num_data_fragments*block_length)
+
+        
+
 
     else:
         addHeadersToFragments(outputFragments,
-                          num_fragments,
-                          total_file_length_bytes,
-                          False)
+                              num_fragments,
+                              total_file_length_bytes,
+                              block_length,
+                              False)
         i = 0
         parity_counter = 0
         frag_position = 0
