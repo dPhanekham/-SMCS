@@ -367,7 +367,6 @@ def addHeadersToFragments(fragments: List[bytearray],
     Args:
       fragments: List of bytearrays
     """
-
     # # TODO add check for num frags size
     # last_block = total_file_length_bytes % num_fragments
     for i in range(num_fragments):
