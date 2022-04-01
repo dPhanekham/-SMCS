@@ -13,3 +13,6 @@ frags/
 /setSizeFiles
 
 config.json
+output.txt
+profilingStats.prof
+runtime.txt
