@@ -55,10 +55,10 @@ def SMCS():
     number_of_fragments = 6
 
     # file for recording runtimes
-    file = open("runtime.txt", "w")
+    file = open("runtime.txt", "a")
 
-    #file_name = 'plex.spk'
-    file_name = 'setSizeFiles/10MB'
+    file_name = 'caribbean.tif'
+    #file_name = 'setSizeFiles/10MB'
     #file_name = 'test1.txt'
     config_name = 'config.json'
     frag_file_path = 'frags/'
@@ -128,7 +128,7 @@ def SMCS():
     #pushFragmentsToCloudFromFilesMultithreaded(fragNames, csps, file_name, frag_file_path)
 
     #print('Time to push fragments to clouds: ' + str(math.trunc((time.time() - start_time) * 1000)) + ' ms')
-    file.write(str(math.trunc((time.time() - start_time) * 1000)) + ', ')
+    #file.write(str(math.trunc((time.time() - start_time) * 1000)) + ', ')
     start_time = time.time()
 
     # retrieve from cloud here
@@ -142,7 +142,7 @@ def SMCS():
 
     # print time to retrieve fragments
     #print('Time to retrieve fragments: ' + str(math.trunc((time.time() - start_time) * 1000)) + ' ms')
-    file.write(str(math.trunc((time.time() - start_time) * 1000)) + ', ')
+    #file.write(str(math.trunc((time.time() - start_time) * 1000)) + ', ')
     start_time = time.time()
 
     print('\nReassembling fragments...')
@@ -429,17 +429,33 @@ def calculateMissingFragment(arrays: List[bytearray], p: List[bool]) -> bytearra
     #   f2.write(result.decode('utf8'))
 
 def bxor_numpy(b1, b2):
-    n_b1 = numpy.fromstring(b1, dtype='uint8')
-    n_b2 = numpy.fromstring(b2, dtype='uint8')
+    n_b1 = numpy.frombuffer(b1, dtype='uint8')
+    n_b2 = numpy.frombuffer(b2, dtype='uint8')
 
     return (n_b1 ^ n_b2).tostring()
 
 def bitwiseXor(b1: bytearray, b2: bytearray) -> bytearray:
-    length = len(b1)
-    result = bytearray(length)
+    return numpy.bitwise_xor(numpy.frombuffer(b1, dtype="uint8"), numpy.frombuffer(b2, dtype="uint8")).tobytes()
 
-    for i in range(length):
-        result[i] = bxor_numpy(b1[i], b2[i])
+    result = bytearray()
+    for b1, b2 in zip(b1, b2):
+        result.append(b1 ^ b2)
+    return result
+
+    y = np.frombuffer(k, dtype=i.dtype)
+
+    #length = len(b1)
+    result = None
+
+    #for i in range(length):
+        #result[i] = bxor_numpy(b1[i], b2[i])
+
+    if b1 != None and b2 != None:
+        numpy.bitwise_xor(b1, b2, result)
+    else:
+        result = 0
+
+    #print(result)
 
     return result
 
@@ -778,7 +794,7 @@ def cleanupClouds(clouds: List[cloud_storage.CloudStorage], removeExistingContai
 
 
 def main():
-    DEBUG = True
+    DEBUG = False
 
     if DEBUG:
         import cProfile
@@ -792,8 +808,8 @@ def main():
         # stats.print_stats()
         stats.dump_stats(filename='profilingStats.prof')
     else:
-        SMCS()
-
+        for x in range(30):
+            SMCS()
 
 if __name__ == "__main__":
     main()
