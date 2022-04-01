@@ -57,8 +57,8 @@ def SMCS():
     # file for recording runtimes
     file = open("runtime.txt", "a")
 
-    file_name = 'caribbean.tif'
-    #file_name = 'setSizeFiles/10MB'
+    #file_name = 'caribbean.tif'
+    file_name = 'setSizeFiles/32MB.bin'
     #file_name = 'test1.txt'
     config_name = 'config.json'
     frag_file_path = 'frags/'
@@ -428,36 +428,10 @@ def calculateMissingFragment(arrays: List[bytearray], p: List[bool]) -> bytearra
     # with open('result.jpg', 'w') as f2:
     #   f2.write(result.decode('utf8'))
 
-def bxor_numpy(b1, b2):
-    n_b1 = numpy.frombuffer(b1, dtype='uint8')
-    n_b2 = numpy.frombuffer(b2, dtype='uint8')
-
-    return (n_b1 ^ n_b2).tostring()
-
+# python is dumb so this is way faster than native python xor
+# also python is dumb for not having a built in xor for bytearrays
 def bitwiseXor(b1: bytearray, b2: bytearray) -> bytearray:
     return numpy.bitwise_xor(numpy.frombuffer(b1, dtype="uint8"), numpy.frombuffer(b2, dtype="uint8")).tobytes()
-
-    result = bytearray()
-    for b1, b2 in zip(b1, b2):
-        result.append(b1 ^ b2)
-    return result
-
-    y = np.frombuffer(k, dtype=i.dtype)
-
-    #length = len(b1)
-    result = None
-
-    #for i in range(length):
-        #result[i] = bxor_numpy(b1[i], b2[i])
-
-    if b1 != None and b2 != None:
-        numpy.bitwise_xor(b1, b2, result)
-    else:
-        result = 0
-
-    #print(result)
-
-    return result
 
 def bitwiseXorArray(ba: List[bytearray], 
                       indices: List[int],

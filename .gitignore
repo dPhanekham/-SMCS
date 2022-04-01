@@ -10,7 +10,7 @@ frags/
 /.vs
 /SMCS.sln
 /SMCS.pyperf
-/setSizeFiles
+setSizeFiles/*.bin
 
 config.json
 output.txt
