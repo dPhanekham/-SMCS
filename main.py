@@ -49,10 +49,11 @@ HEADER_LENGTH = 4
 # split into multiple files plus 1 parity
 # output files
 
-def SMCS():
 
-    block_length = 255
-    number_of_fragments = 6
+def SMCS():
+    # block length is capped at 256
+    block_length = 256
+    number_of_fragments = 4
 
     # file for recording runtimes
     file = open("runtime.txt", "a")
@@ -169,8 +170,10 @@ def SMCS():
     # print('\nReconstructed input:')
     # print(plain_text_bytearray)
 
+    '''
     with open('output.txt', 'wb') as f2:
         f2.write(plain_text_bytearray)
+    '''
 
     print('Time to reassemble fragments: ' + str(math.trunc((time.time() - start_time) * 1000)) + ' ms')
     file.write(str(math.trunc((time.time() - start_time) * 1000)) + '\n')
@@ -180,6 +183,7 @@ def SMCS():
 def readBytesFromFile(file) -> bytearray:
     b = bytearray(file.read())
     return b
+
 
 def pad(b: bytearray,
         block_length: int) -> bytearray:
@@ -220,6 +224,7 @@ def stitchFragments(b: List[bytearray],
        b: ordered list of fragments (bytearrays) to stitch together
        block_length: length of one block
     """
+    start_t = time.time_ns()
 
     stitched_bytearray = bytearray()
     total_length = 0
@@ -228,6 +233,11 @@ def stitchFragments(b: List[bytearray],
     for fragment in b:
         del fragment[0:HEADER_LENGTH]
         total_length += len(fragment)
+
+    # right now the header is just being deleted, but some information could be recovered from it
+    # the information stored is the number of fragmnets, that fragments position in the list, 
+    # the block length, and if distributed parity is used
+    # note that block length is stored as block_length - 1 to accomidate a maximum of 256
 
     # print("\nFRAGMENTS in stitch fragments")
     # for fragment in b:
@@ -302,6 +312,12 @@ def stitchFragments(b: List[bytearray],
     stitched_bytearray = unpad(stitched_bytearray, block_length)
     # print('STITCHED FRAGMENTS')
     # print(stitched_bytearray)
+
+    end = time.time_ns()
+
+    with open('profile.txt', 'a') as f:
+        f.write(f'{math.trunc((end - start_t) / 1000000)}, ')
+
     return stitched_bytearray
 
 
@@ -334,21 +350,36 @@ def getAndRemoveSaltFromFile(cipher_text: bytearray) -> bytes:
 
 
 def encryptByteArray(plain_text: bytearray, key: bytes, salt: bytes) -> bytearray:
+    start = time.time_ns()
+
     cipher_suite = Fernet(key)
     cipher_text = cipher_suite.encrypt(bytes(plain_text))
     cipher_array = bytearray(cipher_text)
     concatSaltWithFile(cipher_array, salt)
+
+    end = time.time_ns()
+    with open('profile.txt', 'a') as f:
+        f.write(f'{math.trunc((end - start) / 1000000)}, ')
+    
     return cipher_array
 
 
 def decryptByteArray(cipher_text: bytearray, key: bytes) -> bytearray:
+    start = time.time_ns()
+
     # TODO maye don't have to remove salt here?
     cipher_suite = Fernet(key)
     plain_text = cipher_suite.decrypt(bytes(cipher_text))
+
+    end = time.time_ns()
+    with open('profile.txt', 'a') as f:
+        f.write(f'{math.trunc((end - start) / 1000000)}\n')
+    
     return plain_text
 
 
 # TODO maybe do this when the fragments are created
+
 def addHeadersToFragments(fragments: List[bytearray],
                           num_fragments: int,
                           total_file_length_bytes: int, 
@@ -372,7 +403,7 @@ def addHeadersToFragments(fragments: List[bytearray],
     for i in range(num_fragments):
         fragments[i].append(num_fragments)
         fragments[i].append(i)
-        fragments[i].append(block_length)
+        fragments[i].append(block_length - 1)
         fragments[i].append(distributed_parity)
 
 # def removeHeadersFromFragments(fragments: List[bytearray]):
@@ -387,6 +418,7 @@ def deleteLocalFragments(file_name, frag_path):
 
 
 # Sorts the fragments based on their position stored in their header
+
 def orderFragmentsByHeader(fragments: List[bytearray]) -> List[bytearray]:
     fragmentsOrdered = [None] * len(fragments)
     # TODO add check to see if num of frags we have matches the num in headers
@@ -433,6 +465,7 @@ def calculateMissingFragment(arrays: List[bytearray], p: List[bool]) -> bytearra
 def bitwiseXor(b1: bytearray, b2: bytearray) -> bytearray:
     return numpy.bitwise_xor(numpy.frombuffer(b1, dtype="uint8"), numpy.frombuffer(b2, dtype="uint8")).tobytes()
 
+
 def bitwiseXorArray(ba: List[bytearray], 
                       indices: List[int],
                       start: int,
@@ -453,6 +486,7 @@ def bitwiseXorArray(ba: List[bytearray],
             tmp_result.append(b1 ^ b2)
         result = tmp_result
     return result
+
 
 def calculateParityBlock(b: bytearray,
                          block_length: int,
@@ -496,9 +530,11 @@ def splitIntoFragments(b: bytearray,
       create_parity {bool} -- [description] (default: {True})
     """
 
+    start_t = time.time_ns()
+
     
-    print("length of b (before padding):", len(b))
-    print("len(b) mod block_length (before padding):", (len(b) % block_length))
+    # print("length of b (before padding):", len(b))
+    # print("len(b) mod block_length (before padding):", (len(b) % block_length))
     # add padding so b is a multiple of the block_length in bytes
     b = pad(b, block_length)
 
@@ -507,10 +543,10 @@ def splitIntoFragments(b: bytearray,
 
     total_file_length_bytes = len(b)
 
-    print("length of b:", total_file_length_bytes)
-    print(f'block length: {block_length}')
-    print("number of fragments:", num_fragments)
-    print("len(b) mod block_length:", (total_file_length_bytes % block_length))
+    # print("length of b:", total_file_length_bytes)
+    # print(f'block length: {block_length}')
+    # print("number of fragments:", num_fragments)
+    # print("len(b) mod block_length:", (total_file_length_bytes % block_length))
 
     # print(b)
 
@@ -605,6 +641,11 @@ def splitIntoFragments(b: bytearray,
                 frag_position = 0
 
             i += block_length
+
+    end = time.time_ns()
+
+    with open('profile.txt', 'a') as f:
+        f.write(f'{math.trunc((end - start_t) / 1000000)}, ')
 
     return outputFragments  # , parity
 
@@ -782,8 +823,10 @@ def main():
         # stats.print_stats()
         stats.dump_stats(filename='profilingStats.prof')
     else:
-        for x in range(30):
+        for x in range(50):
+            print(x)
             SMCS()
+
 
 if __name__ == "__main__":
     main()
